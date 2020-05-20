@@ -1,0 +1,544 @@
+import asyncio
+import logging
+import shlex
+import shutil
+import ssl
+import tempfile
+import typing
+from dataclasses import dataclass
+from abc import ABCMeta
+from pathlib import Path
+from urllib.parse import urljoin
+
+import aiohttp
+
+_LOGGER = logging.getLogger("opentts")
+
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class Voice:
+    """Single TTS voice."""
+
+    id: str
+    name: str
+    gender: str
+    language: str
+    locale: str
+
+
+class TTSBase(metaclass=ABCMeta):
+    """Base class of TTS systems."""
+
+    async def voices(self) -> typing.List[Voice]:
+        """Get list of available voices."""
+        pass
+
+    async def say(self, text: str, voice_id: str) -> bytes:
+        """Speak text as WAV."""
+        pass
+
+
+# -----------------------------------------------------------------------------
+
+
+class EspeakTTS(TTSBase):
+    """Wraps eSpeak (http://espeak.sourceforge.net)"""
+
+    def __init__(self):
+        self.espeak_prog = "espeak-ng"
+        if not shutil.which(self.espeak_prog):
+            self.espeak_prog = "espeak"
+
+    async def voices(self) -> typing.Iterable[Voice]:
+        """Get list of available voices."""
+        espeak_cmd = [self.espeak_prog, "--voices"]
+        _LOGGER.debug(espeak_cmd)
+
+        proc = await asyncio.create_subprocess_exec(
+            *espeak_cmd, stdout=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc.communicate()
+
+        voices_lines = stdout.decode().splitlines()
+        first_line = True
+        for line in voices_lines:
+            if first_line:
+                first_line = False
+                continue
+
+            parts = line.split()
+            locale = parts[1]
+            language = locale.split("-", maxsplit=1)[0]
+
+            yield Voice(
+                id=parts[1],
+                gender=parts[2],
+                name=parts[3],
+                locale=locale,
+                language=language,
+            )
+
+    async def say(self, text: str, voice_id: str) -> bytes:
+        """Speak text as WAV."""
+        espeak_cmd = [
+            self.espeak_prog,
+            "-v",
+            shlex.quote(str(voice_id)),
+            "--stdout",
+            shlex.quote(text),
+        ]
+        _LOGGER.debug(espeak_cmd)
+
+        proc = await asyncio.create_subprocess_exec(
+            *espeak_cmd, stdout=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc.communicate()
+        return stdout
+
+
+# -----------------------------------------------------------------------------
+
+
+class FliteTTS(TTSBase):
+    """Wraps flite (http://www.festvox.org/flite)"""
+
+    def __init__(self, voice_dir: typing.Union[str, Path]):
+        self.voice_dir = Path(voice_dir)
+
+    async def voices(self) -> typing.Iterable[Voice]:
+        """Get list of available voices."""
+        flite_voices = [
+            # English
+            Voice(
+                id="cmu_us_aew",
+                name="cmu_us_aew",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_ahw",
+                name="cmu_us_ahw",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_aup",
+                name="cmu_us_aup",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_awb",
+                name="cmu_us_awb",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_axb",
+                name="cmu_us_axb",
+                gender="F",
+                locale="en-in",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_bdl",
+                name="cmu_us_bdl",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_clb",
+                name="cmu_us_clb",
+                gender="F",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_eey",
+                name="cmu_us_eey",
+                gender="F",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_fem",
+                name="cmu_us_fem",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_gka",
+                name="cmu_us_gka",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_jmk",
+                name="cmu_us_jmk",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_ksp",
+                name="cmu_us_ksp",
+                gender="M",
+                locale="en-in",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_ljm",
+                name="cmu_us_ljm",
+                gender="F",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_lnh",
+                name="cmu_us_lnh",
+                gender="F",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_rms",
+                name="cmu_us_rms",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_rxr",
+                name="cmu_us_rxr",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_slp",
+                name="cmu_us_slp",
+                gender="F",
+                locale="en-in",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_slt",
+                name="cmu_us_slt",
+                gender="F",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="mycroft_voice_4.0",
+                name="mycroft_voice_4.0",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+        ]
+
+        for voice in flite_voices:
+            yield voice
+
+    async def say(self, text: str, voice_id: str) -> bytes:
+        """Speak text as WAV."""
+        flite_cmd = [
+            "flite",
+            "-voice",
+            shlex.quote(str(self.voice_dir / f"{voice_id}.flitevox")),
+            "-o",
+            "/dev/stdout",
+            shlex.quote(text),
+        ]
+        _LOGGER.debug(flite_cmd)
+
+        proc = await asyncio.create_subprocess_exec(
+            *flite_cmd, stdout=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc.communicate()
+        return stdout
+
+
+# -----------------------------------------------------------------------------
+
+
+class FestivalTTS(TTSBase):
+    """Wraps festival (http://www.cstr.ed.ac.uk/projects/festival/)"""
+
+    async def voices(self) -> typing.Iterable[Voice]:
+        """Get list of available voices."""
+        festival_voices = [
+            # English
+            Voice(
+                id="us1_mbrola",
+                name="us1_mbrola",
+                gender="F",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="us2_mbrola",
+                name="us2_mbrola",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="us3_mbrola",
+                name="us3_mbrola",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="rab_diphone",
+                name="rab_diphone",
+                gender="M",
+                locale="en-gb",
+                language="en",
+            ),
+            Voice(
+                id="en1_mbrola",
+                name="en1_mbrola",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="dab_diphone",
+                name="dab_diphone",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="ked_diphone",
+                name="ked_diphone",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="kal_diphone",
+                name="kal_diphone",
+                gender="M",
+                locale="en-us",
+                language="en",
+            ),
+            Voice(
+                id="cmu_us_slt_arctic_hts",
+                name="cmu_us_slt_arctic_hts",
+                gender="F",
+                locale="en-us",
+                language="en",
+            ),
+            # Russian
+            Voice(
+                id="msu_ru_nsh_clunits",
+                name="msu_ru_nsh_clunits",
+                gender="M",
+                locale="ru-ru",
+                language="ru",
+            ),
+            # Spanish
+            Voice(
+                id="el_diphone",
+                name="el_diphone",
+                gender="M",
+                locale="es-es",
+                language="es",
+            ),
+            # Catalan
+            Voice(
+                id="upc_ca_ona_hts",
+                name="upc_ca_ona_hts",
+                gender="F",
+                locale="ca-es",
+                language="ca",
+            ),
+            # Czech
+            Voice(
+                id="czech_dita",
+                name="czech_dita",
+                gender="F",
+                locale="cs-cs",
+                language="cs",
+            ),
+            Voice(
+                id="czech_machac",
+                name="czech_machac",
+                gender="M",
+                locale="cs-cs",
+                language="cs",
+            ),
+            Voice(
+                id="czech_ph",
+                name="czech_ph",
+                gender="M",
+                locale="cs-cs",
+                language="cs",
+            ),
+            Voice(
+                id="czech_krb",
+                name="czech_krb",
+                gender="F",
+                locale="cs-cs",
+                language="cs",
+            ),
+        ]
+
+        for voice in festival_voices:
+            yield voice
+
+    async def say(self, text: str, voice_id: str) -> bytes:
+        """Speak text as WAV."""
+        festival_cmd = [
+            "text2wave",
+            "-o",
+            "/dev/stdout",
+            "-eval",
+            f"(voice_{voice_id})",
+        ]
+        _LOGGER.debug(festival_cmd)
+
+        proc = await asyncio.create_subprocess_exec(
+            *festival_cmd, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE
+        )
+        broken_wav_bytes, _ = await proc.communicate(input=text.encode())
+
+        # Fix WAV length
+        sox_cmd = ["sox", "--ignore-length", "-t", "wav", "-", "-t", "wav", "-"]
+        _LOGGER.debug(sox_cmd)
+
+        proc = await asyncio.create_subprocess_exec(
+            *sox_cmd, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE
+        )
+        fixed_wav_bytes, _ = await proc.communicate(input=broken_wav_bytes)
+
+        return fixed_wav_bytes
+
+
+# -----------------------------------------------------------------------------
+
+
+class NanoTTS(TTSBase):
+    """Wraps nanoTTS (https://github.com/gmn/nanotts)"""
+
+    async def voices(self) -> typing.Iterable[Voice]:
+        """Get list of available voices."""
+        nanotts_voices = [
+            # English
+            Voice(id="en-GB", name="en-GB", gender="F", locale="en-gb", language="en"),
+            Voice(id="en-US", name="en-US", gender="F", locale="en-us", language="en"),
+            # German
+            Voice(id="de-DE", name="de-DE", gender="F", locale="de-de", language="de"),
+            # French
+            Voice(id="fr-FR", name="fr-FR", gender="F", locale="fr-fr", language="fr"),
+            # Spanish
+            Voice(id="es-ES", name="es-ES", gender="F", locale="es-es", language="es"),
+            # Italian
+            Voice(id="it-IT", name="it-IT", gender="F", locale="it-it", language="it"),
+        ]
+
+        for voice in nanotts_voices:
+            yield voice
+
+    async def say(self, text: str, voice_id: str) -> bytes:
+        """Speak text as WAV."""
+        with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
+            nanotts_cmd = ["nanotts", "-v", voice_id, "-o", shlex.quote(wav_file.name)]
+            _LOGGER.debug(nanotts_cmd)
+
+            proc = await asyncio.create_subprocess_exec(
+                *nanotts_cmd, stdin=asyncio.subprocess.PIPE
+            )
+
+            await proc.communicate(input=text.encode())
+
+            wav_file.seek(0)
+            return wav_file.read()
+
+
+# -----------------------------------------------------------------------------
+
+
+class MaryTTS(TTSBase):
+    """Wraps MaryTTS (http://mary.dfki.de)"""
+
+    def __init__(self, url="http://localhost:59125/"):
+        self.url = url
+        self.ssl_context = ssl.SSLContext()
+        self.session = None
+        self.voice_locales = {}
+
+    async def voices(self) -> typing.Iterable[Voice]:
+        """Get list of available voices."""
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
+        voices_url = urljoin(self.url, "voices")
+        _LOGGER.debug(voices_url)
+
+        try:
+            async with self.session.get(voices_url, ssl=self.ssl_context) as response:
+                response.raise_for_status()
+                text = (await response.read()).decode()
+                for line in text.splitlines():
+                    line = line.strip()
+                    if line:
+                        parts = line.split()
+                        locale = parts[1].replace("_", "-")
+                        language = locale.split("-", maxsplit=1)[0]
+
+                        # Cache locale
+                        self.voice_locales[parts[0]] = locale
+
+                        yield Voice(
+                            id=parts[0],
+                            name=parts[0],
+                            gender=parts[2][0].upper(),
+                            locale=locale,
+                            language=language,
+                        )
+        except Exception:
+            _LOGGER.exception("marytts")
+
+    async def say(self, text: str, voice_id: str) -> bytes:
+        """Speak text as WAV."""
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
+        locale = self.voice_locales.get(voice_id)
+        if not locale:
+            async for voice in self.voices():
+                if voice.id == voice_id:
+                    locale = voice.locale.replace("-", "_")
+                    self.voice_locales[voice.id] = locale
+                    break
+
+        params = {
+            "INPUT_TYPE": "TEXT",
+            "OUTPUT_TYPE": "AUDIO",
+            "AUDIO": "WAVE",
+            "VOICE": voice_id,
+            "INPUT_TEXT": text,
+            "LOCALE": locale,
+        }
+
+        process_url = urljoin(self.url, "process")
+        _LOGGER.debug("%s %s", process_url, params)
+        async with self.session.get(
+            process_url, ssl=self.ssl_context, params=params
+        ) as response:
+            response.raise_for_status()
+            wav_bytes = await response.read()
+            return wav_bytes
