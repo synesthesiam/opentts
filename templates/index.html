@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <title>OpenTTS</title>
+
+        <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css"
+              integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous" rel="stylesheet">
+
+        <!-- Custom styles for this template -->
+        <style>
+         body {
+             padding-top: 54px;
+         }
+         @media (min-width: 992px) {
+             body {
+                 padding-top: 56px;
+             }
+         }
+
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12 text-center">
+                    <img class="mt-5" src="https://raw.github.com/synesthesiam/artwork/master/svg/terminal.svg" alt=></img>
+                    <h1 class="mt-5">
+                        OpenTTS
+                    </h1>
+                    <ul class="list-unstyled">
+                    </ul>
+                    <a href="/api/" title="OpenAPI page" class="badge badge-info">API</a>
+                    <input id="text" placeholder="Type here..." size=45 type="text" name="text">
+                    <button id="speak-button" name="speak">Speak</button>
+                    <br/><br/>
+                    <select id="voice-list" name="voices">
+                        <option value="nanotts:en-GB" selected>Select a voice</option>
+                    </select>
+                    <br/><br/>
+                    <audio id="audio" controls autoplay hidden></audio>
+                    <p id="message"></p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+         function q(selector) {return document.querySelector(selector)}
+         q('#text').focus()
+         function do_tts(e) {
+             text = q('#text').value
+             if (text) {
+                 q('#message').textContent = 'Synthesizing...'
+                 q('#speak-button').disabled = true
+                 q('#audio').hidden = true
+                 synthesize(text)
+             }
+             e.preventDefault()
+             return false
+         }
+         q('#speak-button').addEventListener('click', do_tts)
+         q('#text').addEventListener('keyup', function(e) {
+             if (e.keyCode == 13) { // enter
+                 do_tts(e)
+             }
+         })
+         function synthesize(text) {
+             voiceList = q('#voice-list')
+             voice = voiceList.options[voiceList.selectedIndex].value
+
+             fetch('/api/tts?voice=' + encodeURIComponent(voice) + '&text=' + encodeURIComponent(text), {cache: 'no-cache'})
+                 .then(function(res) {
+                     if (!res.ok) throw Error(res.statusText)
+                     return res.blob()
+                 }).then(function(blob) {
+                     q('#message').textContent = ''
+                     q('#speak-button').disabled = false
+                     q('#audio').src = URL.createObjectURL(blob)
+                     q('#audio').hidden = false
+                 }).catch(function(err) {
+                     q('#message').textContent = 'Error: ' + err.message
+                     q('#speak-button').disabled = false
+                 })
+         }
+
+         window.addEventListener('load', function() {
+             fetch('/api/voices')
+                 .then(function(res) {
+                     if (!res.ok) throw Error(res.statusText)
+                     return res.json()
+                 }).then(function(voices) {
+                     voiceList = q('#voice-list')
+                     Object.entries(voices).forEach(function(id_voice) {
+                         id = id_voice[0]
+                         voice = id_voice[1]
+
+                         voiceList.insertAdjacentHTML(
+                             'beforeend', '<option value="' + id + '">' + voice.tts_name + ': ' + voice.name + ' (' + voice.locale + ')</option>'
+                         )
+                     })
+                 }).catch(function(err) {
+                     q('#message').textContent = 'Error: ' + err.message
+                     q('#speak-button').disabled = false
+                 })
+         })
+        </script>
+    </body>
+</html>

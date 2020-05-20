@@ -1,0 +1,46 @@
+openapi: "3.0.0"
+info:
+  title: 'OpenTTS'
+  version: '1.0'
+  description: 'Open Text to Speech API'
+schemes:
+  - http
+servers:
+  - url: http://localhost:5000
+    description: Local server
+paths:
+  /api/tts:
+    get:
+      summary: 'Speak text to WAV'
+      parameters:
+        - in: query
+          name: voice
+          required: true
+          description: 'Voice in the form tts:voice'
+          schema:
+            type: string
+            default: 'espeak:en'
+        - in: query
+          name: text
+          required: true
+          description: 'Text to speak'
+          schema:
+            type: string
+            default: 'Welcome to the world of speech synthesis!'
+      produces:
+        - audio/wav
+      responses:
+        '200':
+          description: audio
+          schema:
+            type: binary
+  /api/voices:
+    get:
+      summary: 'Get available voices'
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: voices
+          schema:
+            type: object
