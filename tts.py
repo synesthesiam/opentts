@@ -542,3 +542,40 @@ class MaryTTS(TTSBase):
             response.raise_for_status()
             wav_bytes = await response.read()
             return wav_bytes
+
+
+# -----------------------------------------------------------------------------
+
+
+class MozillaTTS(TTSBase):
+    """Wraps Mozilla TTS (https://github.com/mozilla/TTS)"""
+
+    def __init__(self, url="http://localhost:5002/"):
+        self.url = url
+        self.ssl_context = ssl.SSLContext()
+        self.session = None
+        self.voice_locales = {}
+
+    async def voices(self) -> typing.Iterable[Voice]:
+        """Get list of available voices."""
+        mozilla_voices = [
+            Voice(id="en-us", name="en-us", locale="en-us", language="en", gender="F")
+        ]
+
+        for voice in mozilla_voices:
+            yield voice
+
+    async def say(self, text: str, voice_id: str) -> bytes:
+        """Speak text as WAV."""
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
+        params = {"text": text}
+
+        tts_url = urljoin(self.url, "api/tts")
+        async with self.session.get(
+            tts_url, ssl=self.ssl_context, params=params
+        ) as response:
+            response.raise_for_status()
+            wav_bytes = await response.read()
+            return wav_bytes

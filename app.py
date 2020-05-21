@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+import argparse
 import dataclasses
 import logging
 import typing
+import ssl
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,26 +14,90 @@ from quart import (
     jsonify,
     request,
     send_file,
+    send_from_directory,
     redirect,
     render_template,
 )
 from swagger_ui import quart_api_doc
 
-from tts import Voice, EspeakTTS, FliteTTS, FestivalTTS, NanoTTS, MaryTTS
+from tts import (
+    TTSBase,
+    Voice,
+    EspeakTTS,
+    FliteTTS,
+    FestivalTTS,
+    NanoTTS,
+    MaryTTS,
+    MozillaTTS,
+)
 
 _DIR = Path(__file__).parent
 _VOICES_DIR = _DIR / "voices"
 
 _LOGGER = logging.getLogger("opentts")
-_TTS = {
-    "espeak": EspeakTTS(),
-    "flite": FliteTTS(_VOICES_DIR / "flite"),
-    "festival": FestivalTTS(),
-    "nanotts": NanoTTS(),
-    "marytts": MaryTTS(),
-}
 
-logging.basicConfig(level=logging.DEBUG)
+# -----------------------------------------------------------------------------
+
+parser = argparse.ArgumentParser(prog="opentts")
+parser.add_argument("--no-espeak", action="store_true", help="Don't use espeak")
+parser.add_argument("--no-flite", action="store_true", help="Don't use flite")
+parser.add_argument(
+    "--flite-voices-dir",
+    help="Directory where flite voices are stored (default: bundled)",
+)
+parser.add_argument("--no-festival", action="store_true", help="Don't use festival")
+parser.add_argument("--no-nanotts", action="store_true", help="Don't use nanotts")
+parser.add_argument(
+    "--marytts-url", help="URL of MaryTTS server (e.g., http://localhost:59125)"
+)
+parser.add_argument(
+    "--mozillatts-url", help="URL of MozillaTTS server (e.g., http://localhost:5002)"
+)
+parser.add_argument(
+    "--debug", action="store_true", help="Print DEBUG messages to console"
+)
+args = parser.parse_args()
+
+if args.debug:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    logging.basicConfig(level=logging.INFO)
+
+_LOGGER.debug(args)
+
+# Load text to speech systems
+_TTS: typing.Dict[str, TTSBase] = {}
+
+if not args.no_espeak:
+    _TTS["espeak"] = EspeakTTS()
+
+if not args.no_flite:
+    flite_voices_dir = _VOICES_DIR / "flite"
+    if args.flite_voices_dir:
+        flite_voices_dir = Path(args.flite_voices_dir)
+
+    _TTS["flite"] = FliteTTS(voice_dir=flite_voices_dir)
+
+if not args.no_festival:
+    _TTS["festival"] = FestivalTTS()
+
+if not args.no_nanotts:
+    _TTS["nanotts"] = NanoTTS()
+
+if args.marytts_url:
+    if not args.marytts_url.endswith("/"):
+        args.marytts_url += "/"
+
+    _TTS["marytts"] = MaryTTS(url=args.marytts_url)
+
+if args.mozillatts_url:
+    if not args.mozillatts_url.endswith("/"):
+        args.mozillatts_url += "/"
+
+    _TTS["mozillatts"] = MozillaTTS(url=args.mozillatts_url)
+
+
+_LOGGER.debug("Loaded TTS systems: %s", ", ".join(_TTS.keys()))
 
 # -----------------------------------------------------------------------------
 
@@ -46,10 +112,30 @@ app = quart_cors.cors(app)
 @app.route("/api/voices")
 async def app_voices() -> Response:
     """Get available voices."""
+    languages = set(request.args.getlist("language"))
+    locales = set(request.args.getlist("locale"))
+    genders = set(request.args.getlist("gender"))
+    tts_names = set(request.args.getlist("tts_name"))
+
     voices: typing.Dict[str, typing.Any] = {}
     for tts_name, tts in _TTS.items():
-        print(tts_name)
+        if tts_names and (tts_name not in tts_names):
+            # Skip TTS
+            continue
+
         async for voice in tts.voices():
+            if languages and (voice.language not in languages):
+                # Skip language
+                continue
+
+            if locales and (voice.locale not in locales):
+                # Skip locale
+                continue
+
+            if genders and (voice.gender not in genders):
+                # Skip gender
+                continue
+
             # Prepend TTS system name to voice ID
             full_id = f"{tts_name}:{voice.id}"
             voices[full_id] = dataclasses.asdict(voice)
@@ -58,6 +144,23 @@ async def app_voices() -> Response:
             voices[full_id]["tts_name"] = tts_name
 
     return jsonify(voices)
+
+
+@app.route("/api/languages")
+async def app_languages() -> Response:
+    """Get available languages."""
+    tts_names = set(request.args.getlist("tts_name"))
+    languages: typing.Set[str] = set()
+
+    for tts_name, tts in _TTS.items():
+        if tts_names and (tts_name not in tts_names):
+            # Skip TTS
+            continue
+
+        async for voice in tts.voices():
+            languages.add(voice.language)
+
+    return jsonify(list(languages))
 
 
 @app.route("/api/tts")
@@ -85,6 +188,18 @@ async def app_say() -> Response:
 async def app_index():
     """Test page."""
     return await render_template("index.html")
+
+
+@app.route("/css/<path:filename>", methods=["GET"])
+async def css(filename) -> Response:
+    """CSS static endpoint."""
+    return await send_from_directory("css", filename)
+
+
+@app.route("/img/<path:filename>", methods=["GET"])
+async def img(filename) -> Response:
+    """Image static endpoint."""
+    return await send_from_directory("img", filename)
 
 
 # Swagger UI
