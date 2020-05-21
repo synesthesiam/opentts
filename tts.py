@@ -314,13 +314,6 @@ class FestivalTTS(TTSBase):
                 language="en",
             ),
             Voice(
-                id="dab_diphone",
-                name="dab_diphone",
-                gender="M",
-                locale="en-us",
-                language="en",
-            ),
-            Voice(
                 id="ked_diphone",
                 name="ked_diphone",
                 gender="M",
