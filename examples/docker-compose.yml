@@ -1,0 +1,14 @@
+version: '2'
+services:
+  opentts:
+    image: synesthesiam/opentts
+    ports:
+      - 5500:5500
+    command: --marytts-url http://marytts:59125 --mozillatts-url http://mozillatts:5002
+    tty: true
+  marytts:
+    image: synesthesiam/marytts:5.2
+    tty: true
+  mozillatts:
+    image: synesthesiam/mozilla-tts
+    tty: true

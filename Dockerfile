@@ -38,6 +38,8 @@ RUN /app/bin/pip3 install -r /app/requirements.txt
 
 # Copy other files
 COPY voices/ /app/voices/
+COPY img/ /app/img/
+COPY css/ /app/css/
 COPY app.py tts.py swagger.yaml /app/
 COPY templates/index.html /app/templates/
 

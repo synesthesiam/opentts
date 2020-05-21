@@ -19,14 +19,14 @@ paths:
           description: 'Voice in the form tts:voice'
           schema:
             type: string
-            default: 'espeak:en'
+            example: 'espeak:en'
         - in: query
           name: text
           required: true
           description: 'Text to speak'
           schema:
             type: string
-            default: 'Welcome to the world of speech synthesis!'
+            example: 'Welcome to the world of speech synthesis!'
       produces:
         - audio/wav
       responses:
@@ -39,8 +39,53 @@ paths:
       summary: 'Get available voices'
       produces:
         - application/json
+      parameters:
+        - in: query
+          name: language
+          description: 'Filter based on language(s)'
+          schema:
+            type: string
+            example: 'en'
+        - in: query
+          name: locale
+          description: 'Filter based on locale(s)'
+          schema:
+            type: string
+            example: 'en-us'
+        - in: query
+          name: gender
+          description: 'Filter based on gender(s)'
+          schema:
+            type: string
+            enum: [M, F]
+            example: 'M'
+        - in: query
+          name: tts_name
+          description: 'Filter based on TTS system name(s)'
+          schema:
+            type: string
+            enum: [espeak, flite, festival, nanotts, marytts]
+            example: flite
       responses:
         '200':
           description: voices
           schema:
             type: object
+  /api/languages:
+    get:
+      summary: 'Get available languages'
+      produces:
+        - application/json
+      parameters:
+        - in: query
+          name: tts_name
+          description: 'Filter based on TTS system name(s)'
+          schema:
+            type: string
+            enum: [espeak, flite, festival, nanotts, marytts]
+            example: flite
+      responses:
+        '200':
+          description: languages
+          schema:
+            type: list

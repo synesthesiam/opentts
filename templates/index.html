@@ -6,8 +6,8 @@
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
         <title>OpenTTS</title>
 
-        <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css"
-              integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous" rel="stylesheet">
+        <link href="css/bootstrap.min.css" rel="stylesheet">
+        <link rel="icon" href="img/favicon.png">
 
         <!-- Custom styles for this template -->
         <style>
@@ -23,10 +23,13 @@
         </style>
     </head>
     <body>
+        <!-- Borrowed from Mozilla TTS -->
         <div class="container">
             <div class="row">
                 <div class="col-lg-12 text-center">
-                    <img class="mt-5" src="https://raw.github.com/synesthesiam/artwork/master/svg/terminal.svg" alt=></img>
+                    <a title="Github project" href="https://github.com/synesthesiam/opentts">
+                        <img class="mt-5" src="img/terminal.svg" alt=></img>
+                    </a>
                     <h1 class="mt-5">
                         OpenTTS
                     </h1>
@@ -36,8 +39,9 @@
                     <input id="text" placeholder="Type here..." size=45 type="text" name="text">
                     <button id="speak-button" name="speak">Speak</button>
                     <br/><br/>
+                    <select id="language-list" name="languages" onchange="changeLanguage()">
+                    </select>
                     <select id="voice-list" name="voices">
-                        <option value="nanotts:en-GB" selected>Select a voice</option>
                     </select>
                     <br/><br/>
                     <audio id="audio" controls autoplay hidden></audio>
@@ -50,7 +54,7 @@
          function q(selector) {return document.querySelector(selector)}
          q('#text').focus()
          function do_tts(e) {
-             text = q('#text').value
+             var text = q('#text').value
              if (text) {
                  q('#message').textContent = 'Synthesizing...'
                  q('#speak-button').disabled = true
@@ -67,8 +71,8 @@
              }
          })
          function synthesize(text) {
-             voiceList = q('#voice-list')
-             voice = voiceList.options[voiceList.selectedIndex].value
+             var voiceList = q('#voice-list')
+             var voice = voiceList.options[voiceList.selectedIndex].value
 
              fetch('/api/tts?voice=' + encodeURIComponent(voice) + '&text=' + encodeURIComponent(text), {cache: 'no-cache'})
                  .then(function(res) {
@@ -85,25 +89,61 @@
                  })
          }
 
-         window.addEventListener('load', function() {
-             fetch('/api/voices')
+         function changeLanguage() {
+             // Load voices for language
+             var languageList = q('#language-list')
+             var language = languageList.options[languageList.selectedIndex].value
+             loadVoices(language)
+         }
+
+         function loadVoices(language) {
+             // Remove previous voices
+             var voiceList = q('#voice-list')
+             for (var i = voiceList.options.length - 1; i >= 0; i--) {
+                 voiceList.options[i].remove()
+             }
+
+             fetch('/api/voices?language=' + encodeURIComponent(language))
                  .then(function(res) {
                      if (!res.ok) throw Error(res.statusText)
                      return res.json()
                  }).then(function(voices) {
-                     voiceList = q('#voice-list')
                      Object.entries(voices).forEach(function(id_voice) {
-                         id = id_voice[0]
-                         voice = id_voice[1]
-
+                         var id = id_voice[0]
+                         var voice = id_voice[1]
+                         var description = voice.tts_name + ': ' + voice.name + ' [' + voice.gender + '] (' + voice.locale + ')'
                          voiceList.insertAdjacentHTML(
-                             'beforeend', '<option value="' + id + '">' + voice.tts_name + ': ' + voice.name + ' (' + voice.locale + ')</option>'
+                             'beforeend', '<option value="' + id + '">' + description + '</option>'
                          )
                      })
                  }).catch(function(err) {
                      q('#message').textContent = 'Error: ' + err.message
                      q('#speak-button').disabled = false
                  })
+         }
+
+         window.addEventListener('load', function() {
+             var defaultLanguage = 'en'
+
+             fetch('/api/languages')
+                 .then(function(res) {
+                     if (!res.ok) throw Error(res.statusText)
+                     return res.json()
+                 }).then(function(languages) {
+                     languages.sort()
+                     var languageList = q('#language-list')
+                     languages.forEach(function(language) {
+                         selected = (language == defaultLanguage) ? 'selected' : ''
+                         languageList.insertAdjacentHTML(
+                             'beforeend', '<option value="' + language + '" ' + selected + '>' + language + '</option>'
+                         )
+                     })
+                 }).catch(function(err) {
+                     q('#message').textContent = 'Error: ' + err.message
+                     q('#speak-button').disabled = false
+                 })
+
+             loadVoices(defaultLanguage)
          })
         </script>
     </body>
