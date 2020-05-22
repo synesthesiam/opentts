@@ -394,30 +394,25 @@ class FestivalTTS(TTSBase):
 
     async def say(self, text: str, voice_id: str) -> bytes:
         """Speak text as WAV."""
-        festival_cmd = [
-            "text2wave",
-            "-o",
-            "/dev/stdout",
-            "-eval",
-            f"(voice_{voice_id})",
-        ]
-        _LOGGER.debug(festival_cmd)
+        with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
+            festival_cmd = [
+                "text2wave",
+                "-o",
+                wav_file.name,
+                "-eval",
+                f"(voice_{voice_id})",
+            ]
+            _LOGGER.debug(festival_cmd)
 
-        proc = await asyncio.create_subprocess_exec(
-            *festival_cmd, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE
-        )
-        broken_wav_bytes, _ = await proc.communicate(input=text.encode())
+            proc = await asyncio.create_subprocess_exec(
+                *festival_cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+            )
+            await proc.communicate(input=text.encode())
 
-        # Fix WAV length
-        sox_cmd = ["sox", "--ignore-length", "-t", "wav", "-", "-t", "wav", "-"]
-        _LOGGER.debug(sox_cmd)
-
-        proc = await asyncio.create_subprocess_exec(
-            *sox_cmd, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE
-        )
-        fixed_wav_bytes, _ = await proc.communicate(input=broken_wav_bytes)
-
-        return fixed_wav_bytes
+            wav_file.seek(0)
+            return wav_file.read()
 
 
 # -----------------------------------------------------------------------------
