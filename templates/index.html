@@ -41,8 +41,10 @@
                     <br/><br/>
                     <select id="language-list" name="languages" onchange="changeLanguage()">
                     </select>
-                    <select id="voice-list" name="voices">
+                    <select id="voice-list" name="voices" onchange="changeVoice()">
                     </select>
+                    <br/>
+                    <span id="voice-id"></span>
                     <br/><br/>
                     <audio id="audio" controls autoplay hidden></audio>
                     <p id="message"></p>
@@ -96,6 +98,12 @@
              loadVoices(language)
          }
 
+         function changeVoice() {
+             var voiceList = q('#voice-list')
+             var voice = voiceList.options[voiceList.selectedIndex].value
+             q('#voice-id').innerHTML = voice
+         }
+
          function loadVoices(language) {
              // Remove previous voices
              var voiceList = q('#voice-list')
@@ -116,6 +124,8 @@
                              'beforeend', '<option value="' + id + '">' + description + '</option>'
                          )
                      })
+
+                     changeVoice()
                  }).catch(function(err) {
                      q('#message').textContent = 'Error: ' + err.message
                      q('#speak-button').disabled = false

@@ -74,7 +74,7 @@ class EspeakTTS(TTSBase):
 
             yield Voice(
                 id=parts[1],
-                gender=parts[2],
+                gender=parts[2][-1],
                 name=parts[3],
                 locale=locale,
                 language=language,
@@ -244,6 +244,98 @@ class FliteTTS(TTSBase):
                 locale="en-us",
                 language="en",
             ),
+            # Indic
+            Voice(
+                id="cmu_indic_hin_ab",
+                name="cmu_indic_hin_ab",
+                gender="F",
+                locale="hi-in",
+                language="hi",
+            ),
+            Voice(
+                id="cmu_indic_ben_rm",
+                name="cmu_indic_ben_rm",
+                gender="F",
+                locale="bn-in",
+                language="bn",
+            ),
+            Voice(
+                id="cmu_indic_guj_ad",
+                name="cmu_indic_guj_ad",
+                gender="F",
+                locale="gu-in",
+                language="gu",
+            ),
+            Voice(
+                id="cmu_indic_guj_dp",
+                name="cmu_indic_guj_dp",
+                gender="F",
+                locale="gu-in",
+                language="gu",
+            ),
+            Voice(
+                id="cmu_indic_guj_kt",
+                name="cmu_indic_guj_kt",
+                gender="F",
+                locale="gu-in",
+                language="gu",
+            ),
+            Voice(
+                id="cmu_indic_kan_plv",
+                name="cmu_indic_kan_plv",
+                gender="F",
+                locale="kn-in",
+                language="kn",
+            ),
+            Voice(
+                id="cmu_indic_mar_aup",
+                name="cmu_indic_mar_aup",
+                gender="F",
+                locale="mr-in",
+                language="mr",
+            ),
+            Voice(
+                id="cmu_indic_mar_slp",
+                name="cmu_indic_mar_slp",
+                gender="F",
+                locale="mr-in",
+                language="mr",
+            ),
+            Voice(
+                id="cmu_indic_pan_amp",
+                name="cmu_indic_pan_amp",
+                gender="F",
+                locale="pa-in",
+                language="pa",
+            ),
+            Voice(
+                id="cmu_indic_tam_sdr",
+                name="cmu_indic_tam_sdr",
+                gender="F",
+                locale="ta-in",
+                language="ta",
+            ),
+            Voice(
+                id="cmu_indic_tel_kpn",
+                name="cmu_indic_tel_kpn",
+                gender="F",
+                locale="te-in",
+                language="te",
+            ),
+            Voice(
+                id="cmu_indic_tel_sk",
+                name="cmu_indic_tel_sk",
+                gender="F",
+                locale="te-in",
+                language="te",
+            ),
+            Voice(
+                id="cmu_indic_tel_ss",
+                name="cmu_indic_tel_ss",
+                gender="F",
+                locale="te-in",
+                language="te",
+            ),
         ]
 
         for voice in flite_voices:
@@ -257,6 +349,7 @@ class FliteTTS(TTSBase):
             shlex.quote(str(self.voice_dir / f"{voice_id}.flitevox")),
             "-o",
             "/dev/stdout",
+            "-t",
             shlex.quote(text),
         ]
         _LOGGER.debug(flite_cmd)
