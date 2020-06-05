@@ -54,6 +54,12 @@ parser.add_argument(
     "--mozillatts-url", help="URL of MozillaTTS server (e.g., http://localhost:5002)"
 )
 parser.add_argument(
+    "--marytts-like",
+    nargs=2,
+    action="append",
+    help="Name and URL of MaryTTS-like server",
+)
+parser.add_argument(
     "--debug", action="store_true", help="Print DEBUG messages to console"
 )
 args = parser.parse_args()
@@ -96,6 +102,12 @@ if args.mozillatts_url:
 
     _TTS["mozillatts"] = MozillaTTS(url=args.mozillatts_url)
 
+if args.marytts_like:
+    for tts_name, tts_url in args.marytts_like:
+        if not tts_url.endswith("/"):
+            tts_url += "/"
+
+        _TTS[tts_name] = MaryTTS(url=tts_url)
 
 _LOGGER.debug("Loaded TTS systems: %s", ", ".join(_TTS.keys()))
 
