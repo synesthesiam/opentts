@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+"""OpenTTS web server"""
 import argparse
 import dataclasses
 import logging
 import typing
-import ssl
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,24 +12,13 @@ from quart import (
     Quart,
     Response,
     jsonify,
-    request,
-    send_file,
-    send_from_directory,
-    redirect,
     render_template,
+    request,
+    send_from_directory,
 )
 from swagger_ui import quart_api_doc
 
-from tts import (
-    TTSBase,
-    Voice,
-    EspeakTTS,
-    FliteTTS,
-    FestivalTTS,
-    NanoTTS,
-    MaryTTS,
-    MozillaTTS,
-)
+from tts import EspeakTTS, FestivalTTS, FliteTTS, MaryTTS, MozillaTTS, NanoTTS, TTSBase
 
 _DIR = Path(__file__).parent
 _VOICES_DIR = _DIR / "voices"
@@ -103,11 +92,11 @@ if args.mozillatts_url:
     _TTS["mozillatts"] = MozillaTTS(url=args.mozillatts_url)
 
 if args.marytts_like:
-    for tts_name, tts_url in args.marytts_like:
-        if not tts_url.endswith("/"):
-            tts_url += "/"
+    for tts_name_, tts_url_ in args.marytts_like:
+        if not tts_url_.endswith("/"):
+            tts_url_ += "/"
 
-        _TTS[tts_name] = MaryTTS(url=tts_url)
+        _TTS[tts_name_] = MaryTTS(url=tts_url_)
 
 _LOGGER.debug("Loaded TTS systems: %s", ", ".join(_TTS.keys()))
 

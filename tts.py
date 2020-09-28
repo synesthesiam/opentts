@@ -1,3 +1,4 @@
+"""Text to speech wrappers for OpenTTS"""
 import asyncio
 import logging
 import shlex
@@ -5,8 +6,8 @@ import shutil
 import ssl
 import tempfile
 import typing
-from dataclasses import dataclass
 from abc import ABCMeta
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -28,16 +29,19 @@ class Voice:
     locale: str
 
 
+VoicesIterable = typing.AsyncGenerator[Voice, None]
+
+
 class TTSBase(metaclass=ABCMeta):
     """Base class of TTS systems."""
 
-    async def voices(self) -> typing.List[Voice]:
+    async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
-        pass
+        yield Voice("", "", "", "", "")
 
-    async def say(self, text: str, voice_id: str) -> bytes:
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
-        pass
+        return bytes()
 
 
 # -----------------------------------------------------------------------------
@@ -51,7 +55,7 @@ class EspeakTTS(TTSBase):
         if not shutil.which(self.espeak_prog):
             self.espeak_prog = "espeak"
 
-    async def voices(self) -> typing.Iterable[Voice]:
+    async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
         espeak_cmd = [self.espeak_prog, "--voices"]
         _LOGGER.debug(espeak_cmd)
@@ -80,7 +84,7 @@ class EspeakTTS(TTSBase):
                 language=language,
             )
 
-    async def say(self, text: str, voice_id: str) -> bytes:
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
         espeak_cmd = [
             self.espeak_prog,
@@ -107,7 +111,7 @@ class FliteTTS(TTSBase):
     def __init__(self, voice_dir: typing.Union[str, Path]):
         self.voice_dir = Path(voice_dir)
 
-    async def voices(self) -> typing.Iterable[Voice]:
+    async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
         flite_voices = [
             # English
@@ -341,7 +345,7 @@ class FliteTTS(TTSBase):
         for voice in flite_voices:
             yield voice
 
-    async def say(self, text: str, voice_id: str) -> bytes:
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
         flite_cmd = [
             "flite",
@@ -367,126 +371,146 @@ class FliteTTS(TTSBase):
 class FestivalTTS(TTSBase):
     """Wraps festival (http://www.cstr.ed.ac.uk/projects/festival/)"""
 
-    async def voices(self) -> typing.Iterable[Voice]:
-        """Get list of available voices."""
-        festival_voices = [
-            # English
-            Voice(
-                id="us1_mbrola",
-                name="us1_mbrola",
-                gender="F",
-                locale="en-us",
-                language="en",
-            ),
-            Voice(
-                id="us2_mbrola",
-                name="us2_mbrola",
-                gender="M",
-                locale="en-us",
-                language="en",
-            ),
-            Voice(
-                id="us3_mbrola",
-                name="us3_mbrola",
-                gender="M",
-                locale="en-us",
-                language="en",
-            ),
-            Voice(
-                id="rab_diphone",
-                name="rab_diphone",
-                gender="M",
-                locale="en-gb",
-                language="en",
-            ),
-            Voice(
-                id="en1_mbrola",
-                name="en1_mbrola",
-                gender="M",
-                locale="en-us",
-                language="en",
-            ),
-            Voice(
-                id="ked_diphone",
-                name="ked_diphone",
-                gender="M",
-                locale="en-us",
-                language="en",
-            ),
-            Voice(
-                id="kal_diphone",
-                name="kal_diphone",
-                gender="M",
-                locale="en-us",
-                language="en",
-            ),
-            Voice(
-                id="cmu_us_slt_arctic_hts",
-                name="cmu_us_slt_arctic_hts",
-                gender="F",
-                locale="en-us",
-                language="en",
-            ),
-            # Russian
-            Voice(
-                id="msu_ru_nsh_clunits",
-                name="msu_ru_nsh_clunits",
-                gender="M",
-                locale="ru-ru",
-                language="ru",
-            ),
-            # Spanish
-            Voice(
-                id="el_diphone",
-                name="el_diphone",
-                gender="M",
-                locale="es-es",
-                language="es",
-            ),
-            # Catalan
-            Voice(
-                id="upc_ca_ona_hts",
-                name="upc_ca_ona_hts",
-                gender="F",
-                locale="ca-es",
-                language="ca",
-            ),
-            # Czech
-            Voice(
-                id="czech_dita",
-                name="czech_dita",
-                gender="F",
-                locale="cs-cs",
-                language="cs",
-            ),
-            Voice(
-                id="czech_machac",
-                name="czech_machac",
-                gender="M",
-                locale="cs-cs",
-                language="cs",
-            ),
-            Voice(
-                id="czech_ph",
-                name="czech_ph",
-                gender="M",
-                locale="cs-cs",
-                language="cs",
-            ),
-            Voice(
-                id="czech_krb",
-                name="czech_krb",
-                gender="F",
-                locale="cs-cs",
-                language="cs",
-            ),
-        ]
+    # Single byte text encodings for specific languages.
+    # See https://en.wikipedia.org/wiki/ISO/IEC_8859
+    LANGUAGE_ENCODINGS = {
+        "en": "iso-8859-1",
+        "ru": "iso-8859-1",  # Russian is transliterated below
+        "es": "iso-8859-15",
+        "ca": "iso-8859-15",  # Not sure if this is correct
+        "cs": "iso-8859-2",
+    }
 
-        for voice in festival_voices:
+    FESTIVAL_VOICES = [
+        # English
+        Voice(
+            id="us1_mbrola",
+            name="us1_mbrola",
+            gender="F",
+            locale="en-us",
+            language="en",
+        ),
+        Voice(
+            id="us2_mbrola",
+            name="us2_mbrola",
+            gender="M",
+            locale="en-us",
+            language="en",
+        ),
+        Voice(
+            id="us3_mbrola",
+            name="us3_mbrola",
+            gender="M",
+            locale="en-us",
+            language="en",
+        ),
+        Voice(
+            id="rab_diphone",
+            name="rab_diphone",
+            gender="M",
+            locale="en-gb",
+            language="en",
+        ),
+        Voice(
+            id="en1_mbrola",
+            name="en1_mbrola",
+            gender="M",
+            locale="en-us",
+            language="en",
+        ),
+        Voice(
+            id="ked_diphone",
+            name="ked_diphone",
+            gender="M",
+            locale="en-us",
+            language="en",
+        ),
+        Voice(
+            id="kal_diphone",
+            name="kal_diphone",
+            gender="M",
+            locale="en-us",
+            language="en",
+        ),
+        Voice(
+            id="cmu_us_slt_arctic_hts",
+            name="cmu_us_slt_arctic_hts",
+            gender="F",
+            locale="en-us",
+            language="en",
+        ),
+        # Russian
+        Voice(
+            id="msu_ru_nsh_clunits",
+            name="msu_ru_nsh_clunits",
+            gender="M",
+            locale="ru-ru",
+            language="ru",
+        ),
+        # Spanish
+        Voice(
+            id="el_diphone",
+            name="el_diphone",
+            gender="M",
+            locale="es-es",
+            language="es",
+        ),
+        # Catalan
+        Voice(
+            id="upc_ca_ona_hts",
+            name="upc_ca_ona_hts",
+            gender="F",
+            locale="ca-es",
+            language="ca",
+        ),
+        # Czech
+        Voice(
+            id="czech_dita",
+            name="czech_dita",
+            gender="F",
+            locale="cs-cs",
+            language="cs",
+        ),
+        Voice(
+            id="czech_machac",
+            name="czech_machac",
+            gender="M",
+            locale="cs-cs",
+            language="cs",
+        ),
+        Voice(
+            id="czech_ph", name="czech_ph", gender="M", locale="cs-cs", language="cs"
+        ),
+        Voice(
+            id="czech_krb", name="czech_krb", gender="F", locale="cs-cs", language="cs"
+        ),
+    ]
+
+    def __init__(self):
+        self._voice_by_id = {v.id: v for v in FestivalTTS.FESTIVAL_VOICES}
+
+    async def voices(self) -> VoicesIterable:
+        """Get list of available voices."""
+        for voice in FestivalTTS.FESTIVAL_VOICES:
             yield voice
 
-    async def say(self, text: str, voice_id: str) -> bytes:
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
+        # Default to part 15 encoding to handle "special" characters.
+        # See https://www.web3.lu/character-encoding-for-festival-tts-files/
+        encoding = "iso-8859-15"
+
+        # Look up encoding by language
+        voice = self._voice_by_id.get(voice_id)
+        if voice:
+            encoding = FestivalTTS.LANGUAGE_ENCODINGS.get(voice.language, encoding)
+
+            if voice.language == "ru":
+                from transliterate import translit
+
+                # Transliterate to Latin script
+                text = translit(text, "ru", reversed=True)
+
         with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
             festival_cmd = [
                 "text2wave",
@@ -502,7 +526,7 @@ class FestivalTTS(TTSBase):
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
             )
-            await proc.communicate(input=text.encode(encoding="iso-8859-15"))
+            await proc.communicate(input=text.encode(encoding=encoding))
 
             wav_file.seek(0)
             return wav_file.read()
@@ -514,7 +538,7 @@ class FestivalTTS(TTSBase):
 class NanoTTS(TTSBase):
     """Wraps nanoTTS (https://github.com/gmn/nanotts)"""
 
-    async def voices(self) -> typing.Iterable[Voice]:
+    async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
         nanotts_voices = [
             # English
@@ -533,7 +557,7 @@ class NanoTTS(TTSBase):
         for voice in nanotts_voices:
             yield voice
 
-    async def say(self, text: str, voice_id: str) -> bytes:
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
         with tempfile.NamedTemporaryFile(suffix=".wav") as wav_file:
             nanotts_cmd = ["nanotts", "-v", voice_id, "-o", shlex.quote(wav_file.name)]
@@ -561,7 +585,7 @@ class MaryTTS(TTSBase):
         self.session = None
         self.voice_locales = {}
 
-    async def voices(self) -> typing.Iterable[Voice]:
+    async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
         if not self.session:
             self.session = aiohttp.ClientSession()
@@ -593,7 +617,7 @@ class MaryTTS(TTSBase):
         except Exception:
             _LOGGER.exception("marytts")
 
-    async def say(self, text: str, voice_id: str) -> bytes:
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
         if not self.session:
             self.session = aiohttp.ClientSession()
@@ -637,7 +661,7 @@ class MozillaTTS(TTSBase):
         self.session = None
         self.voice_locales = {}
 
-    async def voices(self) -> typing.Iterable[Voice]:
+    async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
         mozilla_voices = [
             Voice(id="en-us", name="en-us", locale="en-us", language="en", gender="F")
@@ -646,7 +670,7 @@ class MozillaTTS(TTSBase):
         for voice in mozilla_voices:
             yield voice
 
-    async def say(self, text: str, voice_id: str) -> bytes:
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
         if not self.session:
             self.session = aiohttp.ClientSession()
