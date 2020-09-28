@@ -2,3 +2,4 @@ aiohttp==3.6.2
 quart==0.11.3
 quart-cors==0.3.0
 swagger-ui-py==0.2.1
+transliterate==1.10.2
