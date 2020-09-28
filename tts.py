@@ -502,7 +502,7 @@ class FestivalTTS(TTSBase):
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
             )
-            await proc.communicate(input=text.encode())
+            await proc.communicate(input=text.encode(encoding="iso-8859-15"))
 
             wav_file.seek(0)
             return wav_file.read()
