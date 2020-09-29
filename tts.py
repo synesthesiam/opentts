@@ -373,11 +373,14 @@ class FestivalTTS(TTSBase):
 
     # Single byte text encodings for specific languages.
     # See https://en.wikipedia.org/wiki/ISO/IEC_8859
+    #
+    # Some encodings differ from linked article (part 1 is missing relevant
+    # symbols).
     LANGUAGE_ENCODINGS = {
         "en": "iso-8859-1",
         "ru": "iso-8859-1",  # Russian is transliterated below
-        "es": "iso-8859-15",
-        "ca": "iso-8859-15",  # Not sure if this is correct
+        "es": "iso-8859-15",  # Differs from linked article
+        "ca": "iso-8859-15",  # Differs from linked article
         "cs": "iso-8859-2",
     }
 
