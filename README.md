@@ -15,8 +15,8 @@ Unifies access to multiple open source text to speech systems and voices for man
     * Tamil (1)
     * Telugu (3)
 * [Festival](http://www.cstr.ed.ac.uk/projects/festival/)
-    * English (9), Spanish (1), Catalan (1), Czech (4), Russian (1)
-    * Spanish/Catalan use [ISO-8859-15 encoding](https://en.wikipedia.org/wiki/ISO/IEC_8859-15)
+    * English (9), Spanish (1), Catalan (1), Czech (4), Russian (1), Finnish (2)
+    * Spanish/Catalan/Finnish use [ISO-8859-15 encoding](https://en.wikipedia.org/wiki/ISO/IEC_8859-15)
     * Czech uses [ISO-8859-2 encoding](https://en.wikipedia.org/wiki/ISO/IEC_8859-2)
     * Russian is [transliterated](https://pypi.org/project/transliterate/) from Cyrillic to Latin script automatically
 * [nanoTTS](https://github.com/gmn/nanotts)
