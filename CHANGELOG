@@ -1,0 +1,16 @@
+## [1.1] - 2020 Sep 29
+
+### Added
+
+- 2 Finnish voices for Festival
+- 1 Russian voice for Festival
+
+### Changed
+
+- Festival Catalan/Spanish/Finnish voices use ISO-8559-15 encoding for text
+- Festival Czech voices use ISO-8559-2 encoding for text
+- Festival Russian voice uses Cyrillic alphabet (tranlisterated to Latin script)
+
+## [1.0] - 2020 Jun 05
+
+First release of OpenTTS
