@@ -382,6 +382,7 @@ class FestivalTTS(TTSBase):
         "es": "iso-8859-15",  # Differs from linked article
         "ca": "iso-8859-15",  # Differs from linked article
         "cs": "iso-8859-2",
+        "fi": "iso-8859-15",  # Differs from linked article
     }
 
     FESTIVAL_VOICES = [
@@ -486,6 +487,21 @@ class FestivalTTS(TTSBase):
         ),
         Voice(
             id="czech_krb", name="czech_krb", gender="F", locale="cs-cs", language="cs"
+        ),
+        # Finnish
+        Voice(
+            id="suo_fi_lj_diphone",
+            name="suo_fi_lj_diphone",
+            gender="F",
+            locale="fi-fi",
+            language="fi",
+        ),
+        Voice(
+            id="hy_fi_mv_diphone",
+            name="hy_fi_mv_diphone",
+            gender="M",
+            locale="fi-fi",
+            language="fi",
         ),
     ]
 
