@@ -44,7 +44,7 @@ RUN apt-get update && \
         festvox-us-slt-hts \
         festvox-ru \
         festvox-suopuhe-lj \
-        festvox-suopuhe-mv \
+        festvox-suopuhe-mv
 
 # Install prebuilt nanoTTS
 RUN wget -O - "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
