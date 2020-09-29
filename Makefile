@@ -1,13 +1,11 @@
-DOCKER_REGISTRY ?= docker.io
-PLATFORMS ?= linux/amd64,linux/arm/v7,linux/arm64
-
 .PHONY: check reformat venv
+.SHELL := bash
 
 all:
-	docker buildx build . --platform $(PLATFORMS) --tag $(DOCKER_REGISTRY)/synesthesiam/opentts --push
+	scripts/build-docker.sh
 
 amd64:
-	docker build . --build-arg TARGETARCH=amd64 --build-arg TARGETVARIANT='' -t synesthesiam/opentts
+	PLATFORMS=amd64 scripts/build-docker.sh
 
 check:
 	scripts/check-code.sh
