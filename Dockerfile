@@ -47,7 +47,8 @@ RUN apt-get update && \
         festvox-suopuhe-mv
 
 # Install prebuilt nanoTTS
-RUN wget -O - "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
+RUN wget -O - --no-check-certificate \
+    "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
     tar -C /usr -xzf -
 
 # IFDEF PYPI
