@@ -71,7 +71,7 @@ services:
     tty: true
 ```
 
-Visit http://localhost:5500 and choose language `en` then voices starting with `marytts:` or `mozillatts:
+Visit http://localhost:5500 and choose language `en` then voices starting with `marytts:` or `mozillatts:`
 
 **NOTE**: Mozilla TTS docker image only runs on `amd64` platforms (no Raspberry Pi).
     
