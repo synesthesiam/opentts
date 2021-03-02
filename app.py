@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """OpenTTS web server"""
 import argparse
+import asyncio
 import dataclasses
 import logging
+import signal
 import typing
 from pathlib import Path
 from uuid import uuid4
 
+import hypercorn
 import quart_cors
 from quart import (
     Quart,
@@ -24,10 +27,18 @@ _DIR = Path(__file__).parent
 _VOICES_DIR = _DIR / "voices"
 
 _LOGGER = logging.getLogger("opentts")
+_LOOP = asyncio.get_event_loop()
 
 # -----------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser(prog="opentts")
+parser.add_argument(
+    "--host", default="0.0.0.0", help="Host of HTTP server (default: 0.0.0.0)"
+)
+parser.add_argument(
+    "--port", type=int, default=5000, help="Port of HTTP server (default: 5000)"
+)
+
 parser.add_argument("--no-espeak", action="store_true", help="Don't use espeak")
 parser.add_argument("--no-flite", action="store_true", help="Don't use flite")
 parser.add_argument(
@@ -215,5 +226,31 @@ async def handle_error(err) -> typing.Tuple[str, int]:
 
 
 # -----------------------------------------------------------------------------
+# Run Web Server
+# -----------------------------------------------------------------------------
 
-app.run(host="0.0.0.0", port=5500)
+hyp_config = hypercorn.config.Config()
+hyp_config.bind = [f"{args.host}:{args.port}"]
+
+# Create shutdown event for Hypercorn
+shutdown_event = asyncio.Event()
+
+
+def _signal_handler(*_: typing.Any) -> None:
+    """Signal shutdown to Hypercorn"""
+    shutdown_event.set()
+
+
+_LOOP.add_signal_handler(signal.SIGTERM, _signal_handler)
+
+try:
+    # Need to type cast to satisfy mypy
+    shutdown_trigger = typing.cast(
+        typing.Callable[..., typing.Awaitable[None]], shutdown_event.wait
+    )
+
+    _LOOP.run_until_complete(
+        hypercorn.asyncio.serve(app, hyp_config, shutdown_trigger=shutdown_trigger)
+    )
+except KeyboardInterrupt:
+    _LOOP.call_soon(shutdown_event.set)
