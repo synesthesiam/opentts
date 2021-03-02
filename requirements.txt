@@ -1,4 +1,5 @@
 aiohttp==3.6.2
+hypercorn==0.10.1
 quart==0.11.3
 quart-cors==0.3.0
 swagger-ui-py==0.2.1
