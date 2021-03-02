@@ -3,10 +3,14 @@
 import argparse
 import asyncio
 import dataclasses
+import io
 import logging
 import signal
+import time
 import typing
+import wave
 from pathlib import Path
+from urllib.parse import parse_qs
 from uuid import uuid4
 
 import hypercorn
@@ -116,8 +120,70 @@ _LOGGER.debug("Loaded TTS systems: %s", ", ".join(_TTS.keys()))
 app = Quart("opentts")
 app.secret_key = str(uuid4())
 
+if args.debug:
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
+
 app = quart_cors.cors(app)
 
+# -----------------------------------------------------------------------------
+
+
+async def text_to_wav(text: str, voice: str) -> bytes:
+    """Runs TTS for each line and accumulates all audio into a single WAV."""
+    assert voice, "No voice provided"
+    assert ":" in voice, "Voice format is tts:voice"
+
+    tts_name, voice_id = voice.split(":")
+    tts = _TTS.get(tts_name.lower())
+    assert tts, f"No TTS named {tts_name}"
+
+    # Synthesize each line separately.
+    # Accumulate into a single WAV file.
+    _LOGGER.info("Synthesizing with %s (%s char(s))...", voice, len(text))
+    start_time = time.time()
+    wav_settings_set = False
+
+    with io.BytesIO() as wav_io:
+        wav_file: wave.Wave_write = wave.open(wav_io, "wb")
+        with wav_file:
+            for line_index, line in enumerate(text.strip().splitlines()):
+                _LOGGER.debug(
+                    "Synthesizing line %s (%s char(s))", line_index + 1, len(line)
+                )
+                line_wav_bytes = await tts.say(line, voice_id)
+                _LOGGER.debug(
+                    "Got %s WAV byte(s) for line %s",
+                    len(line_wav_bytes),
+                    line_index + 1,
+                )
+
+                # Open up and add to main WAV
+                with io.BytesIO(line_wav_bytes) as line_wav_io:
+                    with wave.open(line_wav_io, "rb") as line_wav_file:
+                        if not wav_settings_set:
+                            # Copy settings from first WAV
+                            wav_file.setframerate(line_wav_file.getframerate())
+                            wav_file.setsampwidth(line_wav_file.getsampwidth())
+                            wav_file.setnchannels(line_wav_file.getnchannels())
+                            wav_settings_set = True
+
+                        wav_file.writeframes(
+                            line_wav_file.readframes(line_wav_file.getnframes())
+                        )
+
+        # All lines combined
+        wav_bytes = wav_io.getvalue()
+
+    end_time = time.time()
+    _LOGGER.debug(
+        "Synthesized %s byte(s) in %s second(s)", len(wav_bytes), end_time - start_time
+    )
+
+    return wav_bytes
+
+
+# -----------------------------------------------------------------------------
+# HTTP Endpoints
 # -----------------------------------------------------------------------------
 
 
@@ -181,16 +247,48 @@ async def app_say() -> Response:
     voice = request.args.get("voice", "")
     assert voice, "No voice provided"
 
-    assert ":" in voice, "Voice format is tts:voice"
-    tts_name, voice_id = voice.split(":")
-    tts = _TTS.get(tts_name.lower())
-    assert tts, f"No TTS named {tts_name}"
+    # Text can come from POST body or GET ?text arg
+    if request.method == "POST":
+        text = request.data.decode()
+    else:
+        text = request.args.get("text")
 
-    text = request.args.get("text", "").strip()
     assert text, "No text provided"
 
-    wav_bytes = await tts.say(text, voice_id)
+    wav_bytes = await text_to_wav(text, voice)
     return Response(wav_bytes, mimetype="audio/wav")
+
+
+# -----------------------------------------------------------------------------
+
+# MaryTTS compatibility layer
+@app.route("/process", methods=["GET", "POST"])
+async def api_process():
+    """MaryTTS-compatible /process endpoint"""
+    if request.method == "POST":
+        data = parse_qs(request.get_data(as_text=True))
+        text = data.get("INPUT_TEXT", [""])[0]
+        voice = data.get("VOICE", [""])[0]
+    else:
+        text = request.args.get("INPUT_TEXT", "")
+        voice = request.args.get("VOICE", "")
+
+    wav_bytes = await text_to_wav(text, voice)
+
+    return Response(wav_bytes, mimetype="audio/wav")
+
+
+@app.route("/voices", methods=["GET"])
+async def api_voices():
+    """MaryTTS-compatible /voices endpoint"""
+    voices = []
+    for tts_name, tts in _TTS.items():
+        async for voice in tts.voices():
+            # Prepend TTS system name to voice ID
+            full_id = f"{tts_name}:{voice.id}"
+            voices.append(full_id)
+
+    return "\n".join(voices)
 
 
 # -----------------------------------------------------------------------------
