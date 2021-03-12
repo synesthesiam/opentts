@@ -40,11 +40,21 @@
                 </div>
             </div>
             <div class="row mt-3">
-                <div class="col">
+                <div class="col-auto">
                     <select id="language-list" name="languages" onchange="changeLanguage()">
                     </select>
                     <select id="voice-list" name="voices" onchange="changeVoice()">
                     </select>
+                </div>
+                <div class="col-auto" id="larynx-settings">
+                    <select id="vocoder-list" name="vocoders">
+                        <option value="waveglow:wn_256" selected>Best Quality</option>
+                        <option value="hifi_gan:universal_large" selected>High Quality</option>
+                        <option value="hifi_gan:vctk_medium">Medium Quality</option>
+                        <option value="hifi_gan:vctk_small">Low Quality</option>
+                    </select>
+                    <label for="denoiser-stregth" class="ml-2">Denoiser:</label>
+                    <input type="number" id="denoiser-strength" name="denoiser" min="0" max="1" step="0.01" value="0">
                 </div>
             </div>
             <div class="row mt-3">
@@ -75,23 +85,37 @@
              return false
          }
          q('#speak-button').addEventListener('click', do_tts)
-         function synthesize(text) {
+         async function synthesize(text) {
              var voiceList = q('#voice-list')
              var voice = voiceList.options[voiceList.selectedIndex].value
 
-             fetch('/api/tts?voice=' + encodeURIComponent(voice) + '&text=' + encodeURIComponent(text), {cache: 'no-cache'})
-                 .then(function(res) {
-                     if (!res.ok) throw Error(res.statusText)
-                     return res.blob()
-                 }).then(function(blob) {
-                     q('#message').textContent = ''
-                     q('#speak-button').disabled = false
-                     q('#audio').src = URL.createObjectURL(blob)
-                     q('#audio').hidden = false
-                 }).catch(function(err) {
-                     q('#message').textContent = 'Error: ' + err.message
-                     q('#speak-button').disabled = false
-                 })
+             var vocoderList = q('#vocoder-list')
+             var vocoder = vocoderList.options[vocoderList.selectedIndex].value || ''
+             var denoiserStrength = q('#denoiser-strength').value
+
+             var startTime = performance.now()
+
+             res = await fetch(
+                 '/api/tts?voice=' + encodeURIComponent(voice) +
+                 '&vocoder=' + vocoder +
+                 '&denoiserStrength=' + denoiserStrength +
+                 '&text=' + encodeURIComponent(text),
+                 {cache: 'no-cache'}
+             )
+
+             if (res.ok) {
+                 blob = await res.blob()
+                 var elapsedTime = performance.now() - startTime
+
+                 q('#message').textContent = (elapsedTime / 1000) + ' second(s)'
+                 q('#speak-button').disabled = false
+                 q('#audio').src = URL.createObjectURL(blob)
+                 q('#audio').hidden = false
+             } else {
+                 message = await res.text()
+                 q('#message').textContent = message
+                 q('#speak-button').disabled = false
+             }
          }
 
          function changeLanguage() {
@@ -105,6 +129,12 @@
              var voiceList = q('#voice-list')
              var voice = voiceList.options[voiceList.selectedIndex].value
              q('#voice-id').innerHTML = voice
+
+             if (voice.startsWith("larynx:")) {
+                 q('#larynx-settings').style.visibility = "visible";
+             } else {
+                 q('#larynx-settings').style.visibility = "hidden";
+             }
          }
 
          function loadVoices(language) {

@@ -27,6 +27,18 @@ paths:
           schema:
             type: string
             example: 'Welcome to the world of speech synthesis!'
+        - in: query
+          name: vocoder
+          description: 'Vocoder in the form type:name (Larynx only)'
+          schema:
+            type: string
+            example: 'hifi_gan:universal_large'
+        - in: query
+          name: denoiserStrength
+          description: 'Strength of vocoder denoiser (0-1, 0 is disabled, Larynx only)'
+          schema:
+            type: number
+            example: 0.03
       produces:
         - audio/wav
       responses:
