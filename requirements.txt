@@ -1,5 +1,6 @@
 aiohttp==3.7.4
 hypercorn==0.10.1
+larynx-runtime~=0.2.0
 quart==0.11.3
 quart-cors==0.3.0
 swagger-ui-py==0.2.1

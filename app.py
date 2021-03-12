@@ -25,7 +25,16 @@ from quart import (
 )
 from swagger_ui import quart_api_doc
 
-from tts import EspeakTTS, FestivalTTS, FliteTTS, MaryTTS, MozillaTTS, NanoTTS, TTSBase
+from tts import (
+    EspeakTTS,
+    FestivalTTS,
+    FliteTTS,
+    LarynxTTS,
+    MaryTTS,
+    MozillaTTS,
+    NanoTTS,
+    TTSBase,
+)
 
 _DIR = Path(__file__).parent
 _VOICES_DIR = _DIR / "voices"
@@ -63,6 +72,7 @@ parser.add_argument(
     action="append",
     help="Name and URL of MaryTTS-like server",
 )
+parser.add_argument("--no-larynx", action="store_true", help="Don't use Larynx")
 parser.add_argument(
     "--debug", action="store_true", help="Print DEBUG messages to console"
 )
@@ -78,9 +88,11 @@ _LOGGER.debug(args)
 # Load text to speech systems
 _TTS: typing.Dict[str, TTSBase] = {}
 
+# espeak
 if not args.no_espeak:
     _TTS["espeak"] = EspeakTTS()
 
+# flite
 if not args.no_flite:
     flite_voices_dir = _VOICES_DIR / "flite"
     if args.flite_voices_dir:
@@ -88,18 +100,22 @@ if not args.no_flite:
 
     _TTS["flite"] = FliteTTS(voice_dir=flite_voices_dir)
 
+# festival
 if not args.no_festival:
     _TTS["festival"] = FestivalTTS()
 
+# nanotts
 if not args.no_nanotts:
     _TTS["nanotts"] = NanoTTS()
 
+# MaryTTS
 if args.marytts_url:
     if not args.marytts_url.endswith("/"):
         args.marytts_url += "/"
 
     _TTS["marytts"] = MaryTTS(url=args.marytts_url)
 
+# MozillaTTS
 if args.mozillatts_url:
     if not args.mozillatts_url.endswith("/"):
         args.mozillatts_url += "/"
@@ -112,6 +128,10 @@ if args.marytts_like:
             tts_url_ += "/"
 
         _TTS[tts_name_] = MaryTTS(url=tts_url_)
+
+# Larynx
+if not args.no_larynx:
+    _TTS["larynx"] = LarynxTTS(models_dir=(_VOICES_DIR / "larynx"))
 
 _LOGGER.debug("Loaded TTS systems: %s", ", ".join(_TTS.keys()))
 
@@ -128,7 +148,12 @@ app = quart_cors.cors(app)
 # -----------------------------------------------------------------------------
 
 
-async def text_to_wav(text: str, voice: str) -> bytes:
+async def text_to_wav(
+    text: str,
+    voice: str,
+    vocoder: typing.Optional[str] = None,
+    denoiser_strength: typing.Optional[float] = None,
+) -> bytes:
     """Runs TTS for each line and accumulates all audio into a single WAV."""
     assert voice, "No voice provided"
     assert ":" in voice, "Voice format is tts:voice"
@@ -145,33 +170,34 @@ async def text_to_wav(text: str, voice: str) -> bytes:
 
     with io.BytesIO() as wav_io:
         wav_file: wave.Wave_write = wave.open(wav_io, "wb")
-        with wav_file:
-            for line_index, line in enumerate(text.strip().splitlines()):
-                _LOGGER.debug(
-                    "Synthesizing line %s (%s char(s))", line_index + 1, len(line)
-                )
-                line_wav_bytes = await tts.say(line, voice_id)
-                _LOGGER.debug(
-                    "Got %s WAV byte(s) for line %s",
-                    len(line_wav_bytes),
-                    line_index + 1,
-                )
+        for line_index, line in enumerate(text.strip().splitlines()):
+            _LOGGER.debug(
+                "Synthesizing line %s (%s char(s))", line_index + 1, len(line)
+            )
+            line_wav_bytes = await tts.say(
+                line, voice_id, vocoder=vocoder, denoiser_strength=denoiser_strength
+            )
+            assert line_wav_bytes, f"No WAV audio from line: {line}"
+            _LOGGER.debug(
+                "Got %s WAV byte(s) for line %s", len(line_wav_bytes), line_index + 1
+            )
 
-                # Open up and add to main WAV
-                with io.BytesIO(line_wav_bytes) as line_wav_io:
-                    with wave.open(line_wav_io, "rb") as line_wav_file:
-                        if not wav_settings_set:
-                            # Copy settings from first WAV
-                            wav_file.setframerate(line_wav_file.getframerate())
-                            wav_file.setsampwidth(line_wav_file.getsampwidth())
-                            wav_file.setnchannels(line_wav_file.getnchannels())
-                            wav_settings_set = True
+            # Open up and add to main WAV
+            with io.BytesIO(line_wav_bytes) as line_wav_io:
+                with wave.open(line_wav_io, "rb") as line_wav_file:
+                    if not wav_settings_set:
+                        # Copy settings from first WAV
+                        wav_file.setframerate(line_wav_file.getframerate())
+                        wav_file.setsampwidth(line_wav_file.getsampwidth())
+                        wav_file.setnchannels(line_wav_file.getnchannels())
+                        wav_settings_set = True
 
-                        wav_file.writeframes(
-                            line_wav_file.readframes(line_wav_file.getnframes())
-                        )
+                    wav_file.writeframes(
+                        line_wav_file.readframes(line_wav_file.getnframes())
+                    )
 
         # All lines combined
+        wav_file.close()
         wav_bytes = wav_io.getvalue()
 
     end_time = time.time()
@@ -255,7 +281,15 @@ async def app_say() -> Response:
 
     assert text, "No text provided"
 
-    wav_bytes = await text_to_wav(text, voice)
+    vocoder = request.args.get("vocoder")
+    denoiser_strength = request.args.get("denoiserStrength")
+    if denoiser_strength is not None:
+        denoiser_strength = float(denoiser_strength)
+
+    wav_bytes = await text_to_wav(
+        text, voice, vocoder=vocoder, denoiser_strength=denoiser_strength
+    )
+
     return Response(wav_bytes, mimetype="audio/wav")
 
 
