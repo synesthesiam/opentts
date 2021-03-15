@@ -12,19 +12,20 @@
 # * pypi - https://github.com/jayfk/docker-pypi-cache
 # -----------------------------------------------------------------------------
 
-FROM ubuntu:eoan
+FROM ubuntu:focal
 ARG TARGETARCH
 ARG TARGETVARIANT
 
 ENV LANG C.UTF-8
 
 # IFDEF PROXY
-#! RUN echo 'Acquire::http { Proxy "http://${PROXY}"; };' >> /etc/apt/apt.conf.d/01proxy
+#! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends \
         python3 python3-pip python3-venv \
+        openjdk-8-jre-headless \
         sox wget ca-certificates \
         flite espeak-ng festival \
         festvox-ca-ona-hts \
@@ -46,14 +47,18 @@ RUN apt-get update && \
         festvox-suopuhe-lj \
         festvox-suopuhe-mv
 
+# IFDEF PROXY
+#! RUN rm -f /etc/apt/apt.conf.d/01proxy
+# ENDIF
+
 # Install prebuilt nanoTTS
 RUN wget -O - --no-check-certificate \
     "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
     tar -C /usr -xzf -
 
-# IFDEF PYPI
-#! ENV PIP_INDEX_URL=http://${PYPI}/simple/
-#! ENV PIP_TRUSTED_HOST=${PYPI_HOST}
+# IFDEF PROXY
+#! ENV PIP_INDEX_URL=http://${PYPI_PROXY_HOST}:${PYPI_PROXY_PORT}/simple/
+#! ENV PIP_TRUSTED_HOST=${PYPI_PROXY_HOST}
 # ENDIF
 
 COPY requirements.txt /app/
@@ -62,6 +67,11 @@ COPY scripts/create-venv.sh /app/scripts/
 # Install web server
 RUN cd /app && \
     scripts/create-venv.sh
+
+# IFDEF PROXY
+#! ENV PIP_INDEX_URL=''
+#! ENV PIP_TRUSTED_HOST=''
+# ENDIF
 
 # Copy other files
 COPY voices/ /app/voices/
