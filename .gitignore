@@ -2,4 +2,8 @@
 __pycache__/
 .mypy_cache/
 
-voices/flite/*indic*
+/download/
+/voices/flite/*indic*
+/voices/larynx/
+/voices/marytts/
+/log/

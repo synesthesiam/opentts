@@ -687,73 +687,22 @@ class MaryTTSLocal(TTSBase):
 
     async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
-        if not self.voices_dict:
-            _LOGGER.debug("Loading voices from %s", self.base_dir)
-            for voice_jar in self.base_dir.rglob("*.jar"):
-                if (not voice_jar.name.startswith("voice-")) or (
-                    not voice_jar.is_file()
-                ):
-                    continue
-
-                # Open jar as a zip file
-                with ZipFile(voice_jar, "r") as jar_file:
-                    for jar_entry in jar_file.namelist():
-                        if not jar_entry.endswith("/voice.config"):
-                            continue
-
-                        # Parse voice.config file for voice info
-                        voice_name = ""
-                        voice_locale = ""
-                        voice_gender = ""
-
-                        with jar_file.open(jar_entry, "r") as config_file:
-                            for line_bytes in config_file:
-                                try:
-                                    line = line_bytes.decode().strip()
-                                    if (not line) or (line.startswith("#")):
-                                        continue
-
-                                    key, value = line.split("=", maxsplit=1)
-                                    key = key.strip()
-                                    value = value.strip()
-
-                                    if key == "name":
-                                        voice_name = value
-                                    elif key == "locale":
-                                        voice_locale = value
-                                    elif key.endswith(".gender"):
-                                        voice_gender = value
-                                except Exception:
-                                    # Ignore parsing errors
-                                    pass
-
-                        if voice_name and voice_locale:
-                            # Successful parsing
-                            voice_lang = voice_locale.split("_", maxsplit=1)[0]
-
-                            self.voice_jars[voice_name] = voice_jar
-                            self.voices_dict[voice_name] = Voice(
-                                id=voice_name,
-                                name=voice_name,
-                                locale=voice_locale.lower().replace("-", "_"),
-                                language=voice_lang,
-                                gender=voice_gender,
-                            )
-
-                            _LOGGER.debug(self.voices_dict[voice_name])
+        self.maybe_load_voices()
 
         for voice in self.voices_dict.values():
             yield voice
 
     async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
+        self.maybe_load_voices()
+
         if (not self.voice_proc) or (self.proc_voice_id != voice_id):
             if self.voice_proc:
                 _LOGGER.debug("Stopping MaryTTS proc (voice=%s)", self.proc_voice_id)
 
                 try:
                     self.voice_proc.terminate()
-                    self.voice_proc.wait()
+                    await self.voice_proc.wait()
                     self.voice_proc = None
                 except Exception:
                     _LOGGER.exception("marytts")
@@ -818,6 +767,64 @@ class MaryTTSLocal(TTSBase):
         wav_bytes = await self.voice_proc.stdout.readexactly(num_bytes)
 
         return wav_bytes
+
+    def maybe_load_voices(self):
+        """Load MaryTTS voices by opening the jars and finding voice.config"""
+        if self.voices_dict:
+            # Voices already loaded
+            return
+
+        _LOGGER.debug("Loading voices from %s", self.base_dir)
+        for voice_jar in self.base_dir.rglob("*.jar"):
+            if (not voice_jar.name.startswith("voice-")) or (not voice_jar.is_file()):
+                continue
+
+            # Open jar as a zip file
+            with ZipFile(voice_jar, "r") as jar_file:
+                for jar_entry in jar_file.namelist():
+                    if not jar_entry.endswith("/voice.config"):
+                        continue
+
+                    # Parse voice.config file for voice info
+                    voice_name = ""
+                    voice_locale = ""
+                    voice_gender = ""
+
+                    with jar_file.open(jar_entry, "r") as config_file:
+                        for line_bytes in config_file:
+                            try:
+                                line = line_bytes.decode().strip()
+                                if (not line) or (line.startswith("#")):
+                                    continue
+
+                                key, value = line.split("=", maxsplit=1)
+                                key = key.strip()
+                                value = value.strip()
+
+                                if key == "name":
+                                    voice_name = value
+                                elif key == "locale":
+                                    voice_locale = value
+                                elif key.endswith(".gender"):
+                                    voice_gender = value
+                            except Exception:
+                                # Ignore parsing errors
+                                pass
+
+                    if voice_name and voice_locale:
+                        # Successful parsing
+                        voice_lang = voice_locale.split("_", maxsplit=1)[0]
+
+                        self.voice_jars[voice_name] = voice_jar
+                        self.voices_dict[voice_name] = Voice(
+                            id=voice_name,
+                            name=voice_name,
+                            locale=voice_locale.lower().replace("-", "_"),
+                            language=voice_lang,
+                            gender=voice_gender,
+                        )
+
+                        _LOGGER.debug(self.voices_dict[voice_name])
 
 
 # -----------------------------------------------------------------------------

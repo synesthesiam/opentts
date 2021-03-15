@@ -12,7 +12,7 @@
 # * pypi - https://github.com/jayfk/docker-pypi-cache
 # -----------------------------------------------------------------------------
 
-FROM ubuntu:focal
+FROM ubuntu:focal as build
 ARG TARGETARCH
 ARG TARGETVARIANT
 
@@ -25,8 +25,49 @@ ENV LANG C.UTF-8
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends \
         python3 python3-pip python3-venv \
-        openjdk-8-jre-headless \
-        sox wget ca-certificates \
+        wget ca-certificates
+
+# Install prebuilt nanoTTS
+RUN mkdir -p /nanotts && \
+    wget -O - --no-check-certificate \
+        "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
+        tar -C /nanotts -xzf -
+
+# IFDEF PROXY
+#! ENV PIP_INDEX_URL=http://${PYPI_PROXY_HOST}:${PYPI_PROXY_PORT}/simple/
+#! ENV PIP_TRUSTED_HOST=${PYPI_PROXY_HOST}
+# ENDIF
+
+COPY requirements.txt /app/
+COPY scripts/create-venv.sh /app/scripts/
+
+# Copy wheel cache
+COPY download/ /download/
+
+# Install web server
+ENV PIP_INSTALL='install -f /download'
+RUN cd /app && \
+    scripts/create-venv.sh
+
+# Delete extranous gruut data files
+RUN cd /download/gruut && \
+    find . -name lexicon.txt -delete
+
+# -----------------------------------------------------------------------------
+
+FROM ubuntu:focal as run
+
+ENV LANG C.UTF-8
+
+# IFDEF PROXY
+#! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
+# ENDIF
+
+RUN apt-get update && \
+    apt-get install --yes --no-install-recommends \
+        python3 python3-pip python3-venv \
+        openjdk-11-jre-headless \
+        sox \
         flite espeak-ng festival \
         festvox-ca-ona-hts \
         festvox-czech-dita \
@@ -51,27 +92,14 @@ RUN apt-get update && \
 #! RUN rm -f /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
-# Install prebuilt nanoTTS
-RUN wget -O - --no-check-certificate \
-    "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
-    tar -C /usr -xzf -
+# Copy nanotts
+COPY --from=build /nanotts/ /usr/
 
-# IFDEF PROXY
-#! ENV PIP_INDEX_URL=http://${PYPI_PROXY_HOST}:${PYPI_PROXY_PORT}/simple/
-#! ENV PIP_TRUSTED_HOST=${PYPI_PROXY_HOST}
-# ENDIF
+# Copy virtual environment
+COPY --from=build /app/ /app/
 
-COPY requirements.txt /app/
-COPY scripts/create-venv.sh /app/scripts/
-
-# Install web server
-RUN cd /app && \
-    scripts/create-venv.sh
-
-# IFDEF PROXY
-#! ENV PIP_INDEX_URL=''
-#! ENV PIP_TRUSTED_HOST=''
-# ENDIF
+# Copy gruut data files
+COPY --from=build /download/gruut/ /root/.config/gruut/
 
 # Copy other files
 COPY voices/ /app/voices/
