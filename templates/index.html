@@ -181,12 +181,12 @@
                              'beforeend', '<option value="' + language + '" ' + selected + '>' + language + '</option>'
                          )
                      })
+
+                     loadVoices(defaultLanguage)
                  }).catch(function(err) {
                      q('#message').textContent = 'Error: ' + err.message
                      q('#speak-button').disabled = false
                  })
-
-             loadVoices(defaultLanguage)
          })
         </script>
     </body>

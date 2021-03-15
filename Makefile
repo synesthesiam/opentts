@@ -5,7 +5,7 @@ all:
 	scripts/build-docker.sh
 
 amd64:
-	PLATFORMS=amd64 scripts/build-docker.sh
+	NOBUILDX=1 scripts/build-docker.sh
 
 check:
 	scripts/check-code.sh

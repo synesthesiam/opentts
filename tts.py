@@ -12,6 +12,7 @@ from abc import ABCMeta
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urljoin
+from zipfile import ZipFile
 
 import aiohttp
 
@@ -598,8 +599,8 @@ class NanoTTS(TTSBase):
 # -----------------------------------------------------------------------------
 
 
-class MaryTTS(TTSBase):
-    """Wraps MaryTTS (http://mary.dfki.de)"""
+class MaryTTSRemote(TTSBase):
+    """Wraps a remote MaryTTS server (http://mary.dfki.de)"""
 
     def __init__(self, url="http://localhost:59125/"):
         self.url = url
@@ -674,6 +675,154 @@ class MaryTTS(TTSBase):
 # -----------------------------------------------------------------------------
 
 
+class MaryTTSLocal(TTSBase):
+    """Wraps a local MaryTTS installation (http://mary.dfki.de)"""
+
+    def __init__(self, base_dir: typing.Union[str, Path]):
+        self.base_dir = Path(base_dir)
+        self.voices_dict: typing.Dict[str, Voice] = {}
+        self.voice_jars: typing.Dict[str, Path] = {}
+        self.voice_proc: typing.Optional["asyncio.subprocess.Process"] = None
+        self.proc_voice_id: typing.Optional[str] = None
+
+    async def voices(self) -> VoicesIterable:
+        """Get list of available voices."""
+        if not self.voices_dict:
+            _LOGGER.debug("Loading voices from %s", self.base_dir)
+            for voice_jar in self.base_dir.rglob("*.jar"):
+                if (not voice_jar.name.startswith("voice-")) or (
+                    not voice_jar.is_file()
+                ):
+                    continue
+
+                # Open jar as a zip file
+                with ZipFile(voice_jar, "r") as jar_file:
+                    for jar_entry in jar_file.namelist():
+                        if not jar_entry.endswith("/voice.config"):
+                            continue
+
+                        # Parse voice.config file for voice info
+                        voice_name = ""
+                        voice_locale = ""
+                        voice_gender = ""
+
+                        with jar_file.open(jar_entry, "r") as config_file:
+                            for line_bytes in config_file:
+                                try:
+                                    line = line_bytes.decode().strip()
+                                    if (not line) or (line.startswith("#")):
+                                        continue
+
+                                    key, value = line.split("=", maxsplit=1)
+                                    key = key.strip()
+                                    value = value.strip()
+
+                                    if key == "name":
+                                        voice_name = value
+                                    elif key == "locale":
+                                        voice_locale = value
+                                    elif key.endswith(".gender"):
+                                        voice_gender = value
+                                except Exception:
+                                    # Ignore parsing errors
+                                    pass
+
+                        if voice_name and voice_locale:
+                            # Successful parsing
+                            voice_lang = voice_locale.split("_", maxsplit=1)[0]
+
+                            self.voice_jars[voice_name] = voice_jar
+                            self.voices_dict[voice_name] = Voice(
+                                id=voice_name,
+                                name=voice_name,
+                                locale=voice_locale.lower().replace("-", "_"),
+                                language=voice_lang,
+                                gender=voice_gender,
+                            )
+
+                            _LOGGER.debug(self.voices_dict[voice_name])
+
+        for voice in self.voices_dict.values():
+            yield voice
+
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
+        """Speak text as WAV."""
+        if (not self.voice_proc) or (self.proc_voice_id != voice_id):
+            if self.voice_proc:
+                _LOGGER.debug("Stopping MaryTTS proc (voice=%s)", self.proc_voice_id)
+
+                try:
+                    self.voice_proc.terminate()
+                    self.voice_proc.wait()
+                    self.voice_proc = None
+                except Exception:
+                    _LOGGER.exception("marytts")
+
+            # Start new MaryTTS process
+            voice = self.voices_dict.get(voice_id)
+            assert voice is not None, f"No voice for id {voice_id}"
+
+            voice_jar = self.voice_jars.get(voice_id)
+            assert voice_jar is not None, f"No voice jar path for id {voice_id}"
+
+            lang_jar = self.base_dir / "lib" / f"marytts-lang-{voice.language}-5.2.jar"
+            assert lang_jar.is_file(), f"Missing language jar at {lang_jar}"
+
+            # Add jars for voice, language, and txt2wav utility
+            classpath_jars = [
+                voice_jar,
+                lang_jar,
+                self.base_dir / "lib" / "txt2wav-1.0-SNAPSHOT.jar",
+            ]
+
+            # Add MaryTTS and dependencies
+            marytts_jars = (self.base_dir / "lib" / "marytts").glob("*.jar")
+            classpath_jars.extend(marytts_jars)
+
+            marytts_cmd = [
+                "java",
+                "-cp",
+                ":".join(str(p) for p in classpath_jars),
+                "de.dfki.mary.Txt2Wav",
+                "-v",
+                voice.id,
+            ]
+
+            _LOGGER.debug(marytts_cmd)
+
+            self.voice_proc = await asyncio.create_subprocess_exec(
+                *marytts_cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+            )
+
+            self.proc_voice_id = voice_id
+
+        # ---------------------------------------------------------------------
+
+        assert self.voice_proc is not None
+
+        # Write text
+        text_line = text.strip() + "\n"
+
+        assert self.voice_proc.stdin is not None
+        self.voice_proc.stdin.write(text_line.encode())
+        await self.voice_proc.stdin.drain()
+
+        # Get back size of WAV audio in bytes on first line
+        assert self.voice_proc.stdout is not None
+        size_line = await self.voice_proc.stdout.readline()
+        num_bytes = int(size_line.decode())
+
+        _LOGGER.debug("Reading %s byte(s) of WAV audio...", num_bytes)
+        wav_bytes = await self.voice_proc.stdout.readexactly(num_bytes)
+
+        return wav_bytes
+
+
+# -----------------------------------------------------------------------------
+
+
 class MozillaTTS(TTSBase):
     """Wraps Mozilla TTS (https://github.com/mozilla/TTS)"""
 
@@ -715,12 +864,15 @@ class LarynxTTS(TTSBase):
     """Wraps Larynx TTS (https://github.com/rhasspy/larynx)"""
 
     def __init__(self, models_dir: typing.Union[str, Path], sample_rate: int = 22050):
+        import gruut
+        import larynx_runtime
+
         self.models_dir = Path(models_dir)
         self.sample_rate = sample_rate
 
-        self.gruut_langs: typing.Dict[str, "gruut.Language"] = {}
-        self.models: typing.Dict[str, "larynx_runtime.constants.ModelType"] = {}
-        self.vocoders: typing.Dict[str, "larynx_runtime.constants.VocoderType"] = {}
+        self.gruut_langs: typing.Dict[str, gruut.Language] = {}
+        self.models: typing.Dict[str, larynx_runtime.constants.TextToSpeechModel] = {}
+        self.vocoders: typing.Dict[str, larynx_runtime.constants.VocoderModel] = {}
 
         self.larynx_voices = {
             # en-us
@@ -778,6 +930,14 @@ class LarynxTTS(TTSBase):
                 language="es",
                 gender="M",
             ),
+            # fr-fr
+            "siwis-glow_tts": Voice(
+                id="siwis-glow_tts",
+                name="siwis-glow_tts",
+                locale="fr-fr",
+                language="fr",
+                gender="F",
+            ),
             # nl
             "hugocoolens-tacotron2": Voice(
                 id="hugocoolens-tacotron2",
@@ -802,6 +962,15 @@ class LarynxTTS(TTSBase):
                 language="ru",
                 gender="M",
                 tag={"tts": {"noise_scale": 0.2}},
+            ),
+            # sv-se
+            "talesyntese-glow_tts": Voice(
+                id="talesyntese-glow_tts",
+                name="talesyntese-glow_tts",
+                locale="sv-se",
+                language="sv",
+                gender="M",
+                tag={"tts": {"noise_scale": 0.2, "length_scale": 0.8}},
             ),
         }
 

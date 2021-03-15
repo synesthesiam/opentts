@@ -30,7 +30,8 @@ from tts import (
     FestivalTTS,
     FliteTTS,
     LarynxTTS,
-    MaryTTS,
+    MaryTTSLocal,
+    MaryTTSRemote,
     MozillaTTS,
     NanoTTS,
     TTSBase,
@@ -113,7 +114,9 @@ if args.marytts_url:
     if not args.marytts_url.endswith("/"):
         args.marytts_url += "/"
 
-    _TTS["marytts"] = MaryTTS(url=args.marytts_url)
+    _TTS["marytts"] = MaryTTSRemote(url=args.marytts_url)
+else:
+    _TTS["marytts"] = MaryTTSLocal(base_dir=(_VOICES_DIR / "marytts"))
 
 # MozillaTTS
 if args.mozillatts_url:
@@ -127,7 +130,7 @@ if args.marytts_like:
         if not tts_url_.endswith("/"):
             tts_url_ += "/"
 
-        _TTS[tts_name_] = MaryTTS(url=tts_url_)
+        _TTS[tts_name_] = MaryTTSRemote(url=tts_url_)
 
 # Larynx
 if not args.no_larynx:
