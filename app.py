@@ -50,7 +50,7 @@ parser.add_argument(
     "--host", default="0.0.0.0", help="Host of HTTP server (default: 0.0.0.0)"
 )
 parser.add_argument(
-    "--port", type=int, default=5000, help="Port of HTTP server (default: 5000)"
+    "--port", type=int, default=5500, help="Port of HTTP server (default: 5500)"
 )
 
 parser.add_argument("--no-espeak", action="store_true", help="Don't use espeak")

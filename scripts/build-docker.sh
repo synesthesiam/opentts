@@ -82,7 +82,8 @@ if [[ -n "${NOBUILDX}" ]]; then
         -f "${DOCKERFILE}" \
         --build-arg "TARGETARCH=${TARGETARCH}" \
         --build-arg "TARGETVARIANT=${TARGETVARIANT}" \
-        "${tags[@]}" \
+        --tag "${DOCKER_REGISTRY}/synesthesiam/opentts:latest" \
+        --tag "${DOCKER_REGISTRY}/synesthesiam/opentts:${version}" \
         "$@"
 else
     # Use docker buildx (multi-platform)
