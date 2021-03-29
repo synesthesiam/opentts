@@ -48,13 +48,13 @@
                 </div>
                 <div class="col-auto" id="larynx-settings">
                     <select id="vocoder-list" name="vocoders">
-                        <option value="waveglow:wn_256" selected>Best Quality</option>
+                        <option value="waveglow:wn_256">Best Quality</option>
                         <option value="hifi_gan:universal_large" selected>High Quality</option>
                         <option value="hifi_gan:vctk_medium">Medium Quality</option>
                         <option value="hifi_gan:vctk_small">Low Quality</option>
                     </select>
-                    <label for="denoiser-stregth" class="ml-2">Denoiser:</label>
-                    <input type="number" id="denoiser-strength" name="denoiser" min="0" max="1" step="0.01" value="0">
+                    <label for="denoiser-strength" class="ml-2">Denoiser:</label>
+                    <input type="number" id="denoiser-strength" name="denoiser" min="0" max="1" step="0.001" value="0">
                 </div>
             </div>
             <div class="row mt-3">

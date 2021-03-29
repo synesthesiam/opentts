@@ -946,9 +946,9 @@ class LarynxTTS(TTSBase):
                 gender="F",
             ),
             # nl
-            "hugocoolens-tacotron2": Voice(
-                id="hugocoolens-tacotron2",
-                name="hugocoolens-tacotron2",
+            "flemishguy-tacotron2": Voice(
+                id="flemishguy-tacotron2",
+                name="flemishguy-tacotron2",
                 locale="nl",
                 language="nl",
                 gender="M",
@@ -1013,9 +1013,6 @@ class LarynxTTS(TTSBase):
         if not tts_model:
             model_path = self.models_dir / voice.locale / voice_id
             model_type = voice_id.split("-")[-1]  # <name>-<model_type>""
-            if model_type == "glow_tts":
-                model_path = model_path / "generator.onnx"
-
             tts_model = load_tts_model(model_type, model_path=model_path)
             self.models[voice_id] = tts_model
 
@@ -1024,10 +1021,7 @@ class LarynxTTS(TTSBase):
         vocoder_model = self.vocoders.get(vocoder)
         if not vocoder_model:
             vocoder_type, vocoder_name = vocoder.split(":")
-            vocoder_path = (
-                self.models_dir / vocoder_type / vocoder_name / "generator.onnx"
-            )
-
+            vocoder_path = self.models_dir / vocoder_type / vocoder_name
             vocoder_model = load_vocoder_model(vocoder_type, model_path=vocoder_path)
             self.vocoders[vocoder] = vocoder_model
 
