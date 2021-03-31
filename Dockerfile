@@ -47,10 +47,12 @@ COPY download/ /download/
 # Install web server
 ENV PIP_INSTALL='install -f /download'
 RUN cd /app && \
+    export PIP_VERSION='pip==20.2.4' && \
     scripts/create-venv.sh
 
 # Delete extranous gruut data files
-RUN cd /download/gruut && \
+RUN mkdir -p /gruut && \
+    cd /gruut && \
     find . -name lexicon.txt -delete
 
 # -----------------------------------------------------------------------------
@@ -68,6 +70,7 @@ RUN apt-get update && \
         python3 python3-pip python3-venv \
         openjdk-11-jre-headless \
         sox \
+        libopenblas-base libgomp1 libatomic1 \
         flite espeak-ng festival \
         festvox-ca-ona-hts \
         festvox-czech-dita \
@@ -99,7 +102,7 @@ COPY --from=build /nanotts/ /usr/
 COPY --from=build /app/ /app/
 
 # Copy gruut data files
-COPY --from=build /download/gruut/ /root/.config/gruut/
+COPY --from=build /gruut/ /app/voices/larynx/gruut/
 
 # Copy other files
 COPY voices/ /app/voices/
