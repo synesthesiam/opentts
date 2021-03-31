@@ -2,7 +2,9 @@
 import asyncio
 import functools
 import io
+import json
 import logging
+import platform
 import shlex
 import shutil
 import ssl
@@ -872,20 +874,152 @@ class LarynxTTS(TTSBase):
 
     def __init__(self, models_dir: typing.Union[str, Path], sample_rate: int = 22050):
         import gruut
-        import larynx_runtime
+        import larynx
 
         self.models_dir = Path(models_dir)
         self.sample_rate = sample_rate
 
+        # Onnx optimizations crash on armv7l for some reason
+        self.no_optimizations = platform.machine() == "armv7l"
+
         self.gruut_langs: typing.Dict[str, gruut.Language] = {}
-        self.models: typing.Dict[str, larynx_runtime.constants.TextToSpeechModel] = {}
-        self.vocoders: typing.Dict[str, larynx_runtime.constants.VocoderModel] = {}
+        self.models: typing.Dict[str, larynx.constants.TextToSpeechModel] = {}
+        self.vocoders: typing.Dict[str, larynx.constants.VocoderModel] = {}
+        self.audio_settings: typing.Dict[str, larynx.audio.AudioSettings] = {}
 
         self.larynx_voices = {
+            # de-de
+            "thorsten-glow_tts": Voice(
+                id="thorsten-glow_tts",
+                name="thorsten-glow_tts",
+                locale="de-de",
+                language="de",
+                gender="M",
+                tag={"tts": {"noise_scale": 0.2}},
+            ),
             # en-us
-            "kathleen-tacotron2": Voice(
-                id="kathleen-tacotron2",
-                name="kathleen-tacotron2",
+            "blizzard_fls-glow_tts": Voice(
+                id="blizzard_fls-glow_tts",
+                name="blizzard_fls-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "cmu_aew-glow_tts": Voice(
+                id="cmu_aew-glow_tts",
+                name="cmu_aew-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "cmu_ahw-glow_tts": Voice(
+                id="cmu_ahw-glow_tts",
+                name="cmu_ahw-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "cmu_aup-glow_tts": Voice(
+                id="cmu_aup-glow_tts",
+                name="cmu_aup-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "cmu_bdl-glow_tts": Voice(
+                id="cmu_bdl-glow_tts",
+                name="cmu_bdl-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "cmu_clb-glow_tts": Voice(
+                id="cmu_clb-glow_tts",
+                name="cmu_clb-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "cmu_eey-glow_tts": Voice(
+                id="cmu_eey-glow_tts",
+                name="cmu_eey-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "cmu_fem-glow_tts": Voice(
+                id="cmu_fem-glow_tts",
+                name="cmu_fem-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "cmu_jmk-glow_tts": Voice(
+                id="cmu_jmk-glow_tts",
+                name="cmu_jmk-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "cmu_ksp-glow_tts": Voice(
+                id="cmu_ksp-glow_tts",
+                name="cmu_ksp-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "cmu_ljm-glow_tts": Voice(
+                id="cmu_ljm-glow_tts",
+                name="cmu_ljm-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "cmu_lnh-glow_tts": Voice(
+                id="cmu_lnh-glow_tts",
+                name="cmu_lnh-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "cmu_rms-glow_tts": Voice(
+                id="cmu_rms-glow_tts",
+                name="cmu_rms-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "cmu_rxr-glow_tts": Voice(
+                id="cmu_rxr-glow_tts",
+                name="cmu_rxr-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "cmu_slp-glow_tts": Voice(
+                id="cmu_slp-glow_tts",
+                name="cmu_slp-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "cmu_slt-glow_tts": Voice(
+                id="cmu_slt-glow_tts",
+                name="cmu_slt-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "ek-glow_tts": Voice(
+                id="ek-glow_tts",
+                name="ek-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "harvard-glow_tts": Voice(
+                id="harvard-glow_tts",
+                name="harvard-glow_tts",
                 locale="en-us",
                 language="en",
                 gender="F",
@@ -898,13 +1032,6 @@ class LarynxTTS(TTSBase):
                 gender="F",
                 tag={"tts": {"noise_scale": 0.2, "length_scale": 0.8}},
             ),
-            "ljspeech-tacotron2": Voice(
-                id="ljspeech-tacotron2",
-                name="ljspeech-tacotron2",
-                locale="en-us",
-                language="en",
-                gender="F",
-            ),
             "ljspeech-glow_tts": Voice(
                 id="ljspeech-glow_tts",
                 name="ljspeech-glow_tts",
@@ -912,22 +1039,6 @@ class LarynxTTS(TTSBase):
                 language="en",
                 gender="F",
                 tag={"tts": {"noise_scale": 0.2, "length_scale": 0.8}},
-            ),
-            # de-de
-            "thorsten-tacotron2": Voice(
-                id="thorsten-tacotron2",
-                name="thorsten-tacotron2",
-                locale="de-de",
-                language="de",
-                gender="M",
-            ),
-            "thorsten-glow_tts": Voice(
-                id="thorsten-glow_tts",
-                name="thorsten-glow_tts",
-                locale="de-de",
-                language="de",
-                gender="M",
-                tag={"tts": {"noise_scale": 0.2}},
             ),
             # es-es
             "carlfm-glow_tts": Voice(
@@ -937,6 +1048,13 @@ class LarynxTTS(TTSBase):
                 language="es",
                 gender="M",
             ),
+            "karen_savage-glow_tts": Voice(
+                id="karen_savage-glow_tts",
+                name="karen_savage-glow_tts",
+                locale="es-es",
+                language="es",
+                gender="F",
+            ),
             # fr-fr
             "siwis-glow_tts": Voice(
                 id="siwis-glow_tts",
@@ -945,14 +1063,36 @@ class LarynxTTS(TTSBase):
                 language="fr",
                 gender="F",
             ),
-            # nl
-            "flemishguy-tacotron2": Voice(
-                id="flemishguy-tacotron2",
-                name="flemishguy-tacotron2",
-                locale="nl",
-                language="nl",
+            "gilles_le_blanc-glow_tts": Voice(
+                id="gilles_le_blanc-glow_tts",
+                name="gilles_le_blanc-glow_tts",
+                locale="fr-fr",
+                language="fr",
                 gender="M",
             ),
+            "tom-glow_tts": Voice(
+                id="tom-glow_tts",
+                name="tom-glow_tts",
+                locale="fr-fr",
+                language="fr",
+                gender="M",
+            ),
+            # it-it
+            "lisa-glow_tts": Voice(
+                id="lisa-glow_tts",
+                name="lisa-glow_tts",
+                locale="it-it",
+                language="it",
+                gender="M",
+            ),
+            "riccardo_fasol-glow_tts": Voice(
+                id="riccardo_fasol-glow_tts",
+                name="riccardo_fasol-glow_tts",
+                locale="it-it",
+                language="it",
+                gender="M",
+            ),
+            # nl
             "rdh-glow_tts": Voice(
                 id="rdh-glow_tts",
                 name="rdh-glow_tts",
@@ -960,6 +1100,21 @@ class LarynxTTS(TTSBase):
                 language="nl",
                 gender="M",
                 tag={"tts": {"noise_scale": 0.2}},
+            ),
+            "flemishguy-glow_tts": Voice(
+                id="flemishguy-glow_tts",
+                name="flemishguy-glow_tts",
+                locale="nl",
+                language="nl",
+                gender="M",
+                tag={"tts": {"length_scale": 0.8}},
+            ),
+            "bart_de_leeuw-glow_tts": Voice(
+                id="bart_de_leeuw-glow_tts",
+                name="bart_de_leeuw-glow_tts",
+                locale="nl",
+                language="nl",
+                gender="M",
             ),
             # ru-ru
             "nikolaev-glow_tts": Voice(
@@ -969,6 +1124,20 @@ class LarynxTTS(TTSBase):
                 language="ru",
                 gender="M",
                 tag={"tts": {"noise_scale": 0.2}},
+            ),
+            "hajdurova-glow_tts": Voice(
+                id="hajdurova-glow_tts",
+                name="hajdurova-glow_tts",
+                locale="ru-ru",
+                language="ru",
+                gender="F",
+            ),
+            "minaev-glow_tts": Voice(
+                id="minaev-glow_tts",
+                name="minaev-glow_tts",
+                locale="ru-ru",
+                language="ru",
+                gender="F",
             ),
             # sv-se
             "talesyntese-glow_tts": Voice(
@@ -1006,15 +1175,41 @@ class LarynxTTS(TTSBase):
 
         # ---------------------------------------------------------------------
 
-        from larynx_runtime import load_tts_model, load_vocoder_model, text_to_speech
+        from larynx import (
+            AudioSettings,
+            load_tts_model,
+            load_vocoder_model,
+            text_to_speech,
+        )
 
         # Load TTS model
         tts_model = self.models.get(voice_id)
+        audio_settings: typing.Optional[AudioSettings] = None
         if not tts_model:
             model_path = self.models_dir / voice.locale / voice_id
             model_type = voice_id.split("-")[-1]  # <name>-<model_type>""
-            tts_model = load_tts_model(model_type, model_path=model_path)
+            tts_model = load_tts_model(
+                model_type,
+                model_path=model_path,
+                no_optimizations=self.no_optimizations,
+            )
             self.models[voice_id] = tts_model
+
+            # Load audio settings
+            config_path = self.models_dir / voice.locale / voice_id / "config.json"
+            if config_path.is_file():
+                with open(config_path, "r") as config_file:
+                    tts_config = json.load(config_file)
+                    audio_settings = AudioSettings(**tts_config["audio"])
+                    self.audio_settings[voice_id] = audio_settings
+
+        audio_settings = self.audio_settings.get(voice_id)
+        if audio_settings is None:
+            # Use default settings
+            audio_settings = AudioSettings()
+            self.audio_settings[voice_id] = audio_settings
+
+        assert audio_settings is not None
 
         # Load vocoder model
         vocoder = vocoder or "hifi_gan:universal_large"
@@ -1022,13 +1217,17 @@ class LarynxTTS(TTSBase):
         if not vocoder_model:
             vocoder_type, vocoder_name = vocoder.split(":")
             vocoder_path = self.models_dir / vocoder_type / vocoder_name
-            vocoder_model = load_vocoder_model(vocoder_type, model_path=vocoder_path)
+            vocoder_model = load_vocoder_model(
+                vocoder_type,
+                model_path=vocoder_path,
+                no_optimizations=self.no_optimizations,
+            )
             self.vocoders[vocoder] = vocoder_model
 
         # ---------------------------------------------------------------------
 
         # Run text to speech
-        from larynx_runtime.wavfile import write as wav_write
+        from larynx.wavfile import write as wav_write
 
         tts_settings = voice.tag.get("tts") if voice.tag else None
         vocoder_settings = voice.tag.get("vocoder") if voice.tag else None
@@ -1050,6 +1249,7 @@ class LarynxTTS(TTSBase):
                 vocoder_model=vocoder_model,
                 tts_settings=tts_settings,
                 vocoder_settings=vocoder_settings,
+                audio_settings=audio_settings,
             ),
         )
 
