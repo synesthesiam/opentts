@@ -1,0 +1,7 @@
+Voices for MaryTTS (http://mary.dfki.de/).
+
+Each language is in a separate directory. For example:
+
+en-US/
+  voice-cmu-bdl-hsmm-5.2.jar
+  voice-cmu-slt-hsmm-5.2.jar

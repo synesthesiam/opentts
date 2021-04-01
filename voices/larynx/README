@@ -1,0 +1,12 @@
+Larynx voices and vocoders go here (https://github.com/rhasspy/larynx).
+
+Each language and vocoder is in a separate directory. For example:
+
+de-de/
+  thorsten-glow_tts/
+    config.json
+    generator.onnx
+hifi_gan/
+  universal_large/
+    config.json
+    generator.onnx
