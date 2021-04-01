@@ -35,7 +35,7 @@
                 </div>
                 <div class="col-auto">
                     <button id="speak-button" name="speak" class="btn btn-lg btn-primary">Speak</button>
-                    <br/><br/>
+                    <br/><br />
                     <a href="/api/" title="OpenAPI page" class="badge badge-info">API</a>
                 </div>
             </div>
@@ -58,8 +58,12 @@
                 </div>
             </div>
             <div class="row mt-3">
-                <div class="col">
+                <div class="col-auto">
                     <strong>Voice id:</strong> <span id="voice-id"></span>
+                </div>
+                <div class="ml-3 col-auto">
+                    <input id="use-cache" type="checkbox" checked>
+                    <label for="use-cache">Cache</label>
                 </div>
             </div>
             <div class="row">
@@ -92,6 +96,7 @@
              var vocoderList = q('#vocoder-list')
              var vocoder = vocoderList.options[vocoderList.selectedIndex].value || ''
              var denoiserStrength = q('#denoiser-strength').value
+             var useCache = q('#use-cache').checked ? 'true' : 'false'
 
              var startTime = performance.now()
 
@@ -99,7 +104,8 @@
                  '/api/tts?voice=' + encodeURIComponent(voice) +
                  '&vocoder=' + vocoder +
                  '&denoiserStrength=' + denoiserStrength +
-                 '&text=' + encodeURIComponent(text),
+                 '&text=' + encodeURIComponent(text) +
+                 '&cache=' + encodeURIComponent(useCache),
                  {cache: 'no-cache'}
              )
 
