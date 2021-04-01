@@ -6,6 +6,8 @@ import logging
 import typing
 from pathlib import Path
 from uuid import uuid4
+from hashlib import sha256
+from os import path
 
 import quart_cors
 from quart import (
@@ -178,7 +180,18 @@ async def app_say() -> Response:
     text = request.args.get("text", "").strip()
     assert text, "No text provided"
 
-    wav_bytes = await tts.say(text, voice_id)
+    to_hash = text + tts_name + voice_id
+    cache_file_name = "/data/" + sha256(to_hash.encode('utf-8')).hexdigest()
+
+    wav_bytes = b''
+    if path.exists(cache_file_name):
+        with open(cache_file_name, 'rb') as f:
+            wav_bytes = f.read()
+    if not wav_bytes:
+        wav_bytes = await tts.say(text, voice_id)
+        if wav_bytes:
+            with open(cache_file_name, 'wb') as f:
+                f.write(wav_bytes)
     return Response(wav_bytes, mimetype="audio/wav")
 
 

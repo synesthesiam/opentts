@@ -44,7 +44,8 @@ RUN apt-get update && \
         festvox-us-slt-hts \
         festvox-ru \
         festvox-suopuhe-lj \
-        festvox-suopuhe-mv
+        festvox-suopuhe-mv \
+	supervisor
 
 # Install prebuilt nanoTTS
 RUN wget -O - --no-check-certificate \
@@ -69,9 +70,10 @@ COPY img/ /app/img/
 COPY css/ /app/css/
 COPY app.py tts.py swagger.yaml /app/
 COPY templates/index.html /app/templates/
+COPY manage_tts_cache.sh run.sh /
 
 WORKDIR /app
 
 EXPOSE 5500
 
-ENTRYPOINT ["/app/.venv/bin/python3", "/app/app.py"]
+ENTRYPOINT ["/bin/bash", "/run.sh"]
