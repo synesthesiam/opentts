@@ -40,6 +40,20 @@ Exclude eSpeak (robotic voices):
 $ docker run -it -p 5500:5500 synesthesiam/opentts --no-espeak
 ```
 
+### WAV Cache
+
+You can have the OpenTTS server cache WAV files with `--cache`:
+
+```bash
+$ docker run -it -p 5500:5500 synesthesiam/opentts --cache
+```
+
+This will store WAV files in a temporary directory. A specific directory can also be used:
+
+```bash
+$ docker run -it -v /path/to/cache:/cache -p 5500:5500 synesthesiam/opentts --cache /cache
+```
+
 ## HTTP Endpoints
 
 See [swagger.yaml](swagger.yaml)
@@ -47,6 +61,7 @@ See [swagger.yaml](swagger.yaml)
 * `GET /api/tts`
     * `?voice` - voice in the form `tts:voice` (e.g., `espeak:en`)
     * `?text` - text to speak
+    * `?cache` - disable WAV cache with `false`
     * Returns `audio/wav` bytes
 * `GET /api/voices`
     * Returns JSON object

@@ -39,6 +39,12 @@ paths:
           schema:
             type: number
             example: 0.03
+        - in: query
+          name: cache
+          description: 'Use WAV cache if enabled (--cache, default: true)'
+          schema:
+            type: boolean
+            example: false
       produces:
         - audio/wav
       responses:

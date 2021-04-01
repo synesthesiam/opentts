@@ -3,9 +3,11 @@
 import argparse
 import asyncio
 import dataclasses
+import hashlib
 import io
 import logging
 import signal
+import tempfile
 import time
 import typing
 import wave
@@ -75,6 +77,12 @@ parser.add_argument(
 )
 parser.add_argument("--no-larynx", action="store_true", help="Don't use Larynx")
 parser.add_argument(
+    "--cache",
+    nargs="?",
+    const="",
+    help="Cache WAV files in a provided or temporary directory",
+)
+parser.add_argument(
     "--debug", action="store_true", help="Print DEBUG messages to console"
 )
 args = parser.parse_args()
@@ -85,6 +93,32 @@ else:
     logging.basicConfig(level=logging.INFO)
 
 _LOGGER.debug(args)
+
+# -----------------------------------------------------------------------------
+
+# Set up WAV cache
+_CACHE_DIR: typing.Optional[Path] = None
+_CACHE_TEMP_DIR: typing.Optional[tempfile.TemporaryDirectory] = None
+
+if args.cache is not None:
+    if args.cache:
+        # User-specified cache directory
+        _CACHE_DIR = Path(args.cache)
+    else:
+        # Temporary directory
+        _CACHE_TEMP_DIR = tempfile.TemporaryDirectory(prefix="larynx_")
+        _CACHE_DIR = Path(_CACHE_TEMP_DIR.name)
+
+    _LOGGER.debug("Caching WAV files in %s", _CACHE_DIR)
+
+
+def get_cache_key(text: str, voice: str, settings: str = "") -> str:
+    """Get hashed WAV name for cache"""
+    cache_key_str = f"{text}-{voice}-{settings}"
+    return hashlib.sha256(cache_key_str.encode("utf-8")).hexdigest()
+
+
+# -----------------------------------------------------------------------------
 
 # Load text to speech systems
 _TTS: typing.Dict[str, TTSBase] = {}
@@ -156,10 +190,33 @@ async def text_to_wav(
     voice: str,
     vocoder: typing.Optional[str] = None,
     denoiser_strength: typing.Optional[float] = None,
+    use_cache: bool = True,
 ) -> bytes:
     """Runs TTS for each line and accumulates all audio into a single WAV."""
     assert voice, "No voice provided"
     assert ":" in voice, "Voice format is tts:voice"
+
+    # Look up in cache
+    wav_bytes = bytes()
+    cache_path: typing.Optional[Path] = None
+
+    if use_cache and (_CACHE_DIR is not None):
+        # Ensure unique cache id for different denoiser values
+        settings_str = f"denoiser_strength={denoiser_strength}"
+        cache_key = get_cache_key(text=text, voice=voice, settings=settings_str)
+        cache_path = _CACHE_DIR / f"{cache_key}.wav"
+        if cache_path.is_file():
+            try:
+                _LOGGER.debug("Loading from cache: %s", cache_path)
+                wav_bytes = cache_path.read_bytes()
+                return wav_bytes
+            except Exception:
+                # Allow synthesis to proceed if cache fails
+                _LOGGER.exception("cache load")
+
+    # -------------------------------------------------------------------------
+    # Synthesis
+    # -------------------------------------------------------------------------
 
     tts_name, voice_id = voice.split(":")
     tts = _TTS.get(tts_name.lower())
@@ -207,6 +264,14 @@ async def text_to_wav(
     _LOGGER.debug(
         "Synthesized %s byte(s) in %s second(s)", len(wav_bytes), end_time - start_time
     )
+
+    if wav_bytes and (cache_path is not None):
+        try:
+            _LOGGER.debug("Writing to cache: %s", cache_path)
+            cache_path.write_bytes(wav_bytes)
+        except Exception:
+            # Continue if a cache write fails
+            _LOGGER.exception("cache save")
 
     return wav_bytes
 
@@ -276,6 +341,9 @@ async def app_say() -> Response:
     voice = request.args.get("voice", "")
     assert voice, "No voice provided"
 
+    # cache=false or cache=0 disables WAV cache
+    use_cache = request.args.get("cache", "").strip().lower() not in {"false", "0"}
+
     # Text can come from POST body or GET ?text arg
     if request.method == "POST":
         text = request.data.decode()
@@ -290,7 +358,11 @@ async def app_say() -> Response:
         denoiser_strength = float(denoiser_strength)
 
     wav_bytes = await text_to_wav(
-        text, voice, vocoder=vocoder, denoiser_strength=denoiser_strength
+        text,
+        voice,
+        vocoder=vocoder,
+        denoiser_strength=denoiser_strength,
+        use_cache=use_cache,
     )
 
     return Response(wav_bytes, mimetype="audio/wav")
@@ -389,3 +461,7 @@ try:
     )
 except KeyboardInterrupt:
     _LOOP.call_soon(shutdown_event.set)
+finally:
+    # Clean up WAV cache
+    if _CACHE_TEMP_DIR is not None:
+        _CACHE_TEMP_DIR.cleanup()
