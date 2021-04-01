@@ -1,0 +1,9 @@
+Extracted gruut data files go here (https://github.com/rhasspy/gruut).
+
+Each language should be in a separate directory. For example:
+fr-fr/
+  g2p.corpus
+  g2p.fst
+  language.yml
+  lexicon.db
+  phonemes.txt
