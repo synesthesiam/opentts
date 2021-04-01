@@ -18,14 +18,17 @@ ARG TARGETVARIANT
 
 ENV LANG C.UTF-8
 
-# IFDEF PROXY
+# IFDEF APT_PROXY
 #! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends \
-        python3 python3-pip python3-venv \
-        wget ca-certificates
+        wget ca-certificates \
+        build-essential \
+        git zlib1g-dev patchelf rsync \
+        libncursesw5-dev libreadline-gplv2-dev libssl-dev \
+        libgdbm-dev libc6-dev libsqlite3-dev libbz2-dev libffi-dev
 
 # Install prebuilt nanoTTS
 RUN mkdir -p /nanotts && \
@@ -33,7 +36,7 @@ RUN mkdir -p /nanotts && \
         "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
         tar -C /nanotts -xzf -
 
-# IFDEF PROXY
+# IFDEF PYPI_PROXY
 #! ENV PIP_INDEX_URL=http://${PYPI_PROXY_HOST}:${PYPI_PROXY_PORT}/simple/
 #! ENV PIP_TRUSTED_HOST=${PYPI_PROXY_HOST}
 # ENDIF
@@ -44,10 +47,27 @@ COPY scripts/create-venv.sh /app/scripts/
 # Copy wheel cache
 COPY download/ /download/
 
+# -----------------------------------------------------------------------------
+
+# Build Python 3.7
+RUN if [ ! -f /download/Python-3.7.10.tar.xz ]; then \
+        wget -O /download/Python-3.7.10.tar.xz 'https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tar.xz'; \
+    fi && \
+    mkdir -p /build && \
+    tar -C /build -xf /download/Python-3.7.10.tar.xz
+
+RUN cd /build/Python-3.7.10 && \
+    ./configure && \
+    make -j 4 && \
+    make install DESTDIR=/python
+
+# -----------------------------------------------------------------------------
+
 # Install web server
 ENV PIP_INSTALL='install -f /download'
 RUN cd /app && \
-    export PIP_VERSION='pip==20.2.4' && \
+    export PYTHON=/python/usr/local/bin/python3.7 && \
+    export PIP_VERSION='pip<=20.2.4' && \
     scripts/create-venv.sh
 
 # Delete extranous gruut data files
@@ -61,13 +81,12 @@ FROM ubuntu:focal as run
 
 ENV LANG C.UTF-8
 
-# IFDEF PROXY
+# IFDEF APT_PROXY
 #! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends \
-        python3 python3-pip python3-venv \
         openjdk-11-jre-headless \
         sox \
         libopenblas-base libgomp1 libatomic1 \
@@ -91,12 +110,15 @@ RUN apt-get update && \
         festvox-suopuhe-lj \
         festvox-suopuhe-mv
 
-# IFDEF PROXY
+# IFDEF APT_PROXY
 #! RUN rm -f /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
 # Copy nanotts
 COPY --from=build /nanotts/ /usr/
+
+# Copy Python 3.7
+COPY --from=build /python/ /python/
 
 # Copy virtual environment
 COPY --from=build /app/ /app/
@@ -115,4 +137,4 @@ WORKDIR /app
 
 EXPOSE 5500
 
-ENTRYPOINT ["/app/.venv/bin/python3", "/app/app.py"]
+ENTRYPOINT ["/python/usr/local/bin/python3.7", "/app/app.py"]
