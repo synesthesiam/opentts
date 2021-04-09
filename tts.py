@@ -349,7 +349,9 @@ class FliteTTS(TTSBase):
         ]
 
         for voice in flite_voices:
-            yield voice
+            voice_path = self.voice_dir / f"{voice.id}.flitevox"
+            if voice_path.is_file():
+                yield voice
 
     async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
@@ -516,8 +518,27 @@ class FestivalTTS(TTSBase):
 
     async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
+        available_voices: typing.Set[str] = set()
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                "festival",
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+            )
+
+            list_command = "(print (voice.list))"
+            proc_stdout, _ = await proc.communicate(input=list_command.encode())
+            list_result = proc_stdout.decode()
+
+            # (voice1 voice2 ...)
+            available_voices = set(list_result[1:-1].split())
+            _LOGGER.debug("Festival voices: %s", available_voices)
+        except Exception:
+            _LOGGER.exception("Failed to get festival voices")
+
         for voice in FestivalTTS.FESTIVAL_VOICES:
-            yield voice
+            if available_voices and (voice.id in available_voices):
+                yield voice
 
     async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
@@ -1153,7 +1174,9 @@ class LarynxTTS(TTSBase):
     async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
         for voice in self.larynx_voices.values():
-            yield voice
+            model_path = self.models_dir / voice.locale / voice.id
+            if model_path.exists():
+                yield voice
 
     async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
