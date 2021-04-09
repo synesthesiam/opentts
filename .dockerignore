@@ -1,8 +1,0 @@
-.venv/
-.git/
-__pycache__/
-voices/
-!voices/.gitkeep
-gruut/
-!gruut/.gitkeep
-!voices/flite/cmu_indic_tam_sdr.flitevox

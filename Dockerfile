@@ -18,7 +18,7 @@ ARG TARGETVARIANT
 
 ENV LANG C.UTF-8
 
-# IFDEF PROXY
+# IFDEF APT_PROXY
 #! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
@@ -27,7 +27,7 @@ RUN apt-get update && \
         python3 python3-pip python3-venv \
         wget ca-certificates
 
-# IFDEF PROXY
+# IFDEF PYPI_PROXY
 #! ENV PIP_INDEX_URL=http://${PYPI_PROXY_HOST}:${PYPI_PROXY_PORT}/simple/
 #! ENV PIP_TRUSTED_HOST=${PYPI_PROXY_HOST}
 # ENDIF
@@ -69,7 +69,7 @@ ARG LANGUAGE
 
 ENV LANG C.UTF-8
 
-# IFDEF PROXY
+# IFDEF APT_PROXY
 #! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
@@ -84,7 +84,7 @@ COPY etc/ /app/etc/
 COPY scripts/install-packages.sh /app/
 RUN /app/install-packages.sh "${LANGUAGE}"
 
-# IFDEF PROXY
+# IFDEF APT_PROXY
 #! RUN rm -f /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
