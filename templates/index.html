@@ -172,7 +172,7 @@
          }
 
          window.addEventListener('load', function() {
-             var defaultLanguage = 'en'
+             var defaultLanguage = '{{ default_language }}'
 
              fetch('/api/languages')
                  .then(function(res) {

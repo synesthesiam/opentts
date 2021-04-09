@@ -27,12 +27,6 @@ RUN apt-get update && \
         python3 python3-pip python3-venv \
         wget ca-certificates
 
-# Install prebuilt nanoTTS
-RUN mkdir -p /nanotts && \
-    wget -O - --no-check-certificate \
-        "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
-        tar -C /nanotts -xzf -
-
 # IFDEF PROXY
 #! ENV PIP_INDEX_URL=http://${PYPI_PROXY_HOST}:${PYPI_PROXY_PORT}/simple/
 #! ENV PIP_TRUSTED_HOST=${PYPI_PROXY_HOST}
@@ -41,23 +35,37 @@ RUN mkdir -p /nanotts && \
 COPY requirements.txt /app/
 COPY scripts/create-venv.sh /app/scripts/
 
-# Copy wheel cache
+# Copy cache
 COPY download/ /download/
+
+# Install prebuilt nanoTTS
+ENV NANOTTS_FILE=nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz
+
+RUN if [ ! -f "/download/${NANOTTS_FILE}" ]; then \
+        wget -O "/download/${NANOTTS_FILE}"  \
+            --no-check-certificate \
+            "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/${NANOTTS_FILE}"; \
+    fi
+
+RUN mkdir -p /nanotts && \
+    tar -C /nanotts -xf "/download/${NANOTTS_FILE}"
+
 
 # Install web server
 ENV PIP_INSTALL='install -f /download'
 RUN cd /app && \
-    export PIP_VERSION='pip==20.2.4' && \
+    export PIP_VERSION='pip<=20.2.4' && \
     scripts/create-venv.sh
 
 # Delete extranous gruut data files
+COPY gruut /gruut/
 RUN mkdir -p /gruut && \
     cd /gruut && \
     find . -name lexicon.txt -delete
 
 # -----------------------------------------------------------------------------
-
 FROM ubuntu:focal as run
+ARG LANGUAGE
 
 ENV LANG C.UTF-8
 
@@ -68,28 +76,13 @@ ENV LANG C.UTF-8
 RUN apt-get update && \
     apt-get install --yes --no-install-recommends \
         python3 python3-pip python3-venv \
-        openjdk-11-jre-headless \
-        sox \
-        libopenblas-base libgomp1 libatomic1 \
-        flite espeak-ng festival \
-        festvox-ca-ona-hts \
-        festvox-czech-dita \
-        festvox-czech-krb \
-        festvox-czech-machac \
-        festvox-czech-ph \
-        festvox-don \
-        festvox-ellpc11k \
-        festvox-en1 \
-        festvox-kallpc16k \
-        festvox-kdlpc16k \
-        festvox-rablpc16k \
-        festvox-us1 \
-        festvox-us2 \
-        festvox-us3 \
-        festvox-us-slt-hts \
-        festvox-ru \
-        festvox-suopuhe-lj \
-        festvox-suopuhe-mv
+        sox flite espeak-ng
+
+RUN mkdir -p /app && echo "${LANGUAGE}" > /app/LANGUAGE
+
+COPY etc/ /app/etc/
+COPY scripts/install-packages.sh /app/
+RUN /app/install-packages.sh "${LANGUAGE}"
 
 # IFDEF PROXY
 #! RUN rm -f /etc/apt/apt.conf.d/01proxy

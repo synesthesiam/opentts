@@ -1,0 +1,87 @@
+Description: uttsynth modules should return the utt
+ Otherwise festival errors "SIOD ERROR: wrong type of argument to get_c_utt"
+Bug-Debian: http://bugs.debian.org/943402.
+Author: Sergio Oller <sergioller@gmail.com>
+Last-Update: 2020-04-03
+--- a/festival/italian_scm/fdefine.scm
++++ b/festival/italian_scm/fdefine.scm
+@@ -286,7 +286,8 @@
+ 	     (item.set_feat p 'type "BHO")))
+ 
+ 	   
+-	   (set! p (item.next p)))))
++	   (set! p (item.next p))))
++utt)
+ 
+ (define (Simbolic_word_end_punct word)
+   "(Simbolic_word_end_punct WORD)
+--- a/festival/italian_scm/italian_module.scm
++++ b/festival/italian_scm/italian_module.scm
+@@ -34,7 +34,8 @@
+       		(item.set_feat w 'FW (italian_fw_gpos w1 italian_guess_pos))
+       		(item.set_feat w 'apo "1")) ;parola con apostrofo
+       	(item.set_feat w 'FW (italian_fw_gpos (item.name w) italian_guess_pos)))
+-	(set! w (item.next w)))))
++	(set! w (item.next w))))
++utt)
+ 
+ 
+ (define (Phrase_Type utt)
+@@ -59,7 +60,8 @@
+ 	(item.set_feat p 'type "sospensiva"))
+ 	(if (or (string-equal pu "\"") (string-equal pu ")") (string-equal pu "\]") (string-equal pu "\}"))
+ 	(item.set_feat p 'type "riportativa"))
+-	(set! p (item.next p)))))
++	(set! p (item.next p))))
++utt)
+ 
+ 
+ (define (Position_FW utt)
+@@ -113,7 +115,8 @@
+ 		(while   (and S (not (equal? (item.relation I 'Intonation) (item.relation S 'Intonation))))
+ 		;(print "f3")
+ 		(item.append_daughter P_gr S)
+-		(set! S (item.next S)))))))
++		(set! S (item.next S))))))
++utt)
+ 
+ (define (Word_dopo_num utt)
+ "Dopo il modulo numerico (e solo in questo caso) che salva anche la trascrizione sposta le relation in modo appropiato"
+@@ -141,7 +144,8 @@
+ 			)
+ 		))
+ 	 
+-	(set! p_token (item.next p_token)))))
++	(set! p_token (item.next p_token))))
++utt)
+ 
+ (define (Word_split_pos utt)
+ "Prende il pos complesso della relation word (lessico) e lo divide in tPOS=True POS e GEN=Genere"
+@@ -157,7 +161,7 @@
+ 		)
+ 
+ 	(set! p_word (item.next p_word))))
+-)
++utt)
+ 
+ (define (Token_punct utt)
+ "Mette a posto la punteggiatura degli acronimi"
+@@ -169,7 +173,8 @@
+ 		(set! punt (string-after (item.feat p_token 'punc) "."))
+ 		(item.set_feat p_token 'punc punt)
+ 		)) 
+-	(set! p_token (item.next p_token)))))
++	(set! p_token (item.next p_token))))
++utt)
+ 
+ 
+ ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+@@ -218,7 +223,7 @@
+      	(set! item_segs_list (cdr item_segs_list))
+      	)
+      )
+-    )
++utt)
+      	
+ 
+ 
