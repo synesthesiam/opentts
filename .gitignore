@@ -8,3 +8,4 @@ __pycache__/
 /voices/marytts/
 /log/
 /gruut/
+.dockerignore
