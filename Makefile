@@ -2,7 +2,9 @@
 .SHELL := bash
 
 all:
-	scripts/build-docker.sh
+	for lang in bn ca cs de en  es fi fr gu hi it kn mr nl pa ru sv ta te tr; \
+        do LANGUAGE=$$lang scripts/build-docker.sh; \
+    done
 
 amd64:
 	NOBUILDX=1 scripts/build-docker.sh

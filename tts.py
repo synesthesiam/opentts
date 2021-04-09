@@ -480,21 +480,21 @@ class FestivalTTS(TTSBase):
             id="czech_dita",
             name="czech_dita",
             gender="F",
-            locale="cs-cs",
+            locale="cs-cz",
             language="cs",
         ),
         Voice(
             id="czech_machac",
             name="czech_machac",
             gender="M",
-            locale="cs-cs",
+            locale="cs-cz",
             language="cs",
         ),
         Voice(
-            id="czech_ph", name="czech_ph", gender="M", locale="cs-cs", language="cs"
+            id="czech_ph", name="czech_ph", gender="M", locale="cs-cz", language="cs"
         ),
         Voice(
-            id="czech_krb", name="czech_krb", gender="F", locale="cs-cs", language="cs"
+            id="czech_krb", name="czech_krb", gender="F", locale="cs-cz", language="cs"
         ),
         # Finnish
         Voice(
@@ -510,6 +510,45 @@ class FestivalTTS(TTSBase):
             gender="M",
             locale="fi-fi",
             language="fi",
+        ),
+        # Telugu
+        Voice(
+            id="telugu_NSK_diphone",
+            name="telugu_NSK_diphone",
+            gender="M",
+            locale="te-in",
+            language="te",
+        ),
+        # Marathi
+        Voice(
+            id="marathi_NSK_diphone",
+            name="marathi_NSK_diphone",
+            gender="M",
+            locale="mr-in",
+            language="mr",
+        ),
+        # Hindi
+        Voice(
+            id="hindi_NSK_diphone",
+            name="hindi_NSK_diphone",
+            gender="M",
+            locale="hi-in",
+            language="hi",
+        ),
+        # Italian
+        Voice(
+            id="lp_diphone",
+            name="lp_diphone",
+            gender="F",
+            locale="it-it",
+            language="it",
+        ),
+        Voice(
+            id="pc_diphone",
+            name="pc_diphone",
+            gender="M",
+            locale="it-it",
+            language="it",
         ),
     ]
 
@@ -531,13 +570,13 @@ class FestivalTTS(TTSBase):
             list_result = proc_stdout.decode()
 
             # (voice1 voice2 ...)
-            available_voices = set(list_result[1:-1].split())
+            available_voices = set(list_result[1:-2].split())
             _LOGGER.debug("Festival voices: %s", available_voices)
         except Exception:
             _LOGGER.exception("Failed to get festival voices")
 
         for voice in FestivalTTS.FESTIVAL_VOICES:
-            if available_voices and (voice.id in available_voices):
+            if (not available_voices) or (voice.id in available_voices):
                 yield voice
 
     async def say(self, text: str, voice_id: str, **kwargs) -> bytes:

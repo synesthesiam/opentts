@@ -45,6 +45,12 @@ _VOICES_DIR = _DIR / "voices"
 _LOGGER = logging.getLogger("opentts")
 _LOOP = asyncio.get_event_loop()
 
+# Language to default to in dropdown list
+_DEFAULT_LANGUAGE = "en"
+lang_path = _DIR / "LANGUAGE"
+if lang_path.is_file():
+    _DEFAULT_LANGUAGE = lang_path.read_text().strip()
+
 # -----------------------------------------------------------------------------
 
 parser = argparse.ArgumentParser(prog="opentts")
@@ -406,7 +412,7 @@ async def api_voices():
 @app.route("/")
 async def app_index():
     """Test page."""
-    return await render_template("index.html")
+    return await render_template("index.html", default_language=_DEFAULT_LANGUAGE)
 
 
 @app.route("/css/<path:filename>", methods=["GET"])
