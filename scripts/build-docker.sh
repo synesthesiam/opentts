@@ -13,6 +13,7 @@ version="$(cat "${src_dir}/VERSION")"
 : "${DOCKER_REGISTRY=docker.io}"
 
 : "${LANGUAGE=en}"
+# ar (Arabic)
 # bn (Bengali)
 # ca (Catalan)
 # cs (Czech)
@@ -84,7 +85,10 @@ LARYNX_VOCODERS=('voices/larynx/hifi_gan' 'voices/larynx/waveglow')
 keep_paths=()
 tags=("--tag" "synesthesiam/opentts:${LANGUAGE}")
 
-if [[ "${LANGUAGE}" == 'bn' ]]; then
+if [[ "${LANGUAGE}" == 'ar' ]]; then
+    # Arabic
+    keep_paths+=('voices/festival/ar')
+elif [[ "${LANGUAGE}" == 'bn' ]]; then
     # Bengali
     keep_paths+=('voices/flite/cmu_indic_ben_rm.flitevox')
 elif [[ "${LANGUAGE}" == 'ca' ]]; then

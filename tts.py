@@ -391,6 +391,7 @@ class FestivalTTS(TTSBase):
         "ca": "iso-8859-15",  # Differs from linked article
         "cs": "iso-8859-2",
         "fi": "iso-8859-15",  # Differs from linked article
+        "ar": "utf-8",
     }
 
     FESTIVAL_VOICES = [
@@ -550,6 +551,14 @@ class FestivalTTS(TTSBase):
             locale="it-it",
             language="it",
         ),
+        # Araabic
+        Voice(
+            id="ara_norm_ziad_hts",
+            name="ara_norm_ziad_hts",
+            gender="M",
+            locale="ar",
+            language="ar",
+        ),
     ]
 
     def __init__(self):
@@ -590,7 +599,21 @@ class FestivalTTS(TTSBase):
         if voice:
             encoding = FestivalTTS.LANGUAGE_ENCODINGS.get(voice.language, encoding)
 
-            if voice.language == "ru":
+            if voice.language == "ar":
+                try:
+                    # Add diacritics
+                    import mishkal.tashkeel
+
+                    vocalizer = getattr(self, "mishkal_vocalizer", None)
+                    if vocalizer is None:
+                        vocalizer = mishkal.tashkeel.TashkeelClass()
+                        setattr(self, "mishkal_vocalizer", vocalizer)
+
+                    text = vocalizer.tashkeel(text)
+                    _LOGGER.debug("Added diacritics: %s", text)
+                except ImportError:
+                    _LOGGER.warning("Missing mishkal package, cannot do diacritizion.")
+            elif voice.language == "ru":
                 from transliterate import translit
 
                 # Transliterate to Latin script

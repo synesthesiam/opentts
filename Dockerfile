@@ -22,7 +22,8 @@ ENV LANG C.UTF-8
 #! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && \
     apt-get install --yes --no-install-recommends \
         python3 python3-pip python3-venv \
         wget ca-certificates
@@ -53,7 +54,8 @@ RUN mkdir -p /nanotts && \
 
 # Install web server
 ENV PIP_INSTALL='install -f /download'
-RUN cd /app && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    cd /app && \
     export PIP_VERSION='pip<=20.2.4' && \
     scripts/create-venv.sh
 
@@ -73,7 +75,8 @@ ENV LANG C.UTF-8
 #! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt \
+    apt-get update && \ \
     apt-get install --yes --no-install-recommends \
         python3 python3-pip python3-venv \
         sox flite espeak-ng
@@ -97,8 +100,15 @@ COPY --from=build /app/ /app/
 # Copy gruut data files
 COPY --from=build /gruut/ /app/voices/larynx/gruut/
 
-# Copy other files
+# Copy voices
 COPY voices/ /app/voices/
+
+# Run post-installation script
+# May use files in /app/voices
+COPY scripts/post-install.sh /app/
+RUN /app/post-install.sh "${LANGUAGE}"
+
+# Copy other files
 COPY img/ /app/img/
 COPY css/ /app/css/
 COPY app.py tts.py swagger.yaml /app/
