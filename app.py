@@ -428,7 +428,7 @@ async def img(filename) -> Response:
 
 
 # Swagger UI
-quart_api_doc(app, config_path="swagger.yaml", url_prefix="/api", title="OpenTTS")
+quart_api_doc(app, config_path="swagger.yaml", url_prefix="/openapi", title="OpenTTS")
 
 
 @app.errorhandler(Exception)
