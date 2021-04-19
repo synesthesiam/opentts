@@ -5,6 +5,7 @@ LARYNX_DEPS='libopenblas-base libgomp1 libatomic1'
 LANGUAGE="$1"
 
 declare -A packages
+packages['ar']="${FESTIVAL}"
 packages['ca']="${FESTIVAL} festvox-ca-ona-hts"
 packages['cs']="${FESTIVAL} festvox-czech-dita festvox-czech-krb festvox-czech-machac festvox-czech-ph"
 
@@ -30,6 +31,7 @@ if [[ -n "${lang_packages}" ]]; then
 fi
 
 if [[ "${LANGUAGE}" == 'it' ]]; then
+    # Italian
     # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=943402
     # https://salsa.debian.org/tts-team/festival-it/-/blob/master/debian/patches/03_fix_return_utt_synth_types.patch
 

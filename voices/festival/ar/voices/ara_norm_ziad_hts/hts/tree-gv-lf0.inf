@@ -1,0 +1,11 @@
+QS Num-Words_in_Utterance==6 { "*+6-*" }
+QS Num-Words_in_Utterance<=8 { "*+1-*","*+2-*","*+3-*","*+4-*","*+5-*","*+6-*","*+7-*","*+8-*" }
+QS Num-Words_in_Utterance<=12 { "*+1-*","*+2-*","*+3-*","*+4-*","*+5-*","*+6-*","*+7-*","*+8-*","*+9-*","*+10-*","*+11-*","*+12-*" }
+
+{*}[2]
+{
+   0 Num-Words_in_Utterance<=12                          "gv_lf0_1"      -1    
+  -1 Num-Words_in_Utterance==6                          -2          "gv_lf0_2" 
+  -2 Num-Words_in_Utterance<=8                           "gv_lf0_4"       "gv_lf0_3" 
+}
+
