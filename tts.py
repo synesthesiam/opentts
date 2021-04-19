@@ -978,7 +978,34 @@ class LarynxTTS(TTSBase):
                 locale="de-de",
                 language="de",
                 gender="M",
-                tag={"tts": {"noise_scale": 0.2}},
+            ),
+            "eva_k-glow_tts": Voice(
+                id="eva_k-glow_tts",
+                name="eva_k-glow_tts",
+                locale="de-de",
+                language="de",
+                gender="F",
+            ),
+            "karlsson-glow_tts": Voice(
+                id="karlsson-glow_tts",
+                name="karlsson-glow_tts",
+                locale="de-de",
+                language="de",
+                gender="M",
+            ),
+            "pavoque-glow_tts": Voice(
+                id="pavoque-glow_tts",
+                name="pavoque-glow_tts",
+                locale="de-de",
+                language="de",
+                gender="M",
+            ),
+            "rebecca_braunert_plunkett-glow_tts": Voice(
+                id="rebecca_braunert_plunkett-glow_tts",
+                name="rebecca_braunert_plunkett-glow_tts",
+                locale="de-de",
+                language="de",
+                gender="F",
             ),
             # en-us
             "blizzard_fls-glow_tts": Voice(
@@ -1122,6 +1149,13 @@ class LarynxTTS(TTSBase):
                 language="en",
                 gender="F",
                 tag={"tts": {"noise_scale": 0.2, "length_scale": 0.8}},
+            ),
+            "mary_ann-glow_tts": Voice(
+                id="mary_ann-glow_tts",
+                name="mary_ann-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
             ),
             # es-es
             "carlfm-glow_tts": Voice(
