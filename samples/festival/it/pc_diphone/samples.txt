@@ -1,0 +1,5 @@
+sample_1|Da dove vieni?
+sample_2|Parli un'altra lingua oltre l'italiano?
+sample_3|Auguri di pronta guarigione!
+sample_4|Una sola lingua non è mai abbastanza.
+sample_5|Il mio aeroscafo è pieno di anguille!

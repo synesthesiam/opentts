@@ -1,0 +1,5 @@
+sample_1|Det var länge sedan vi sågs sist!
+sample_2|Ha en trevlig dag!
+sample_3|Den här damen betalar för allting.
+sample_4|Ett språk är aldrig nog.
+sample_5|Min svävare är full med ål.

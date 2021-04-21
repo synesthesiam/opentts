@@ -1,0 +1,4 @@
+sample_1|Parli més a poc a poc, si us plau
+sample_2|Que vagi de gust!
+sample_3|Vols ballar amb mi?
+sample_4|No n'hi ha prou amb una llengua

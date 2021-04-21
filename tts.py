@@ -551,7 +551,7 @@ class FestivalTTS(TTSBase):
             locale="it-it",
             language="it",
         ),
-        # Araabic
+        # Arabic
         Voice(
             id="ara_norm_ziad_hts",
             name="ara_norm_ziad_hts",

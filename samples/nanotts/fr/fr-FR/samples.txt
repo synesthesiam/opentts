@@ -1,0 +1,5 @@
+sample_1|Pourriez-vous parler un peu moins vite?
+sample_2|Je suis allergique.
+sample_3|Est-ce que vous pourriez l'écrire?
+sample_4|Avez-vous des plats végétariens?
+sample_5|Si mon tonton tond ton tonton, ton tonton sera tondu.

@@ -1,0 +1,5 @@
+sample_1|Una cerveza, por favor.
+sample_2|¿Puedes hablar más despacio?
+sample_3|¡Siga recto! Despúes, gire a la izquierda!
+sample_4|¿Cómo te llamas?
+sample_5|El bebé bebe bebidas con burbujas.

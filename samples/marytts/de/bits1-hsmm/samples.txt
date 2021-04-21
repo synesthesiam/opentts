@@ -1,0 +1,5 @@
+sample_1|Können Sie bitte langsamer sprechen?
+sample_2|Mir geht es gut, danke!
+sample_3|Haben Sie ein vegetarisches Gericht?
+sample_4|Ich bin allergisch.
+sample_5|Fischers Fritze fischt frische Fische; Frische Fische fischt Fischers Fritze.
