@@ -1,8 +1,12 @@
 # Open Text to Speech Server
 
-Unifies access to multiple open source text to speech systems and voices for many languages, including:
+Unifies access to multiple open source text to speech systems and voices for many languages.
 
 [Listen to voice samples](https://synesthesiam.github.io/opentts/)
+
+![Web interface screenshot](img/screenshot.png "Screenshot")
+
+## Voices
 
 * [Larynx](https://github.com/rhasspy/larynx-runtime)
     * English (20), German (1), French (3), Spanish (2), Dutch (3), Russian (3), Swedish (1), Italian (2)
@@ -24,8 +28,6 @@ Unifies access to multiple open source text to speech systems and voices for man
 * [eSpeak](http://espeak.sourceforge.net)
     * Supports huge number of languages/locales, but sounds robotic
     
-![Web interface screenshot](img/screenshot.png "Screenshot")
-
 ## Running
 
 Basic OpenTTS server:
