@@ -1,0 +1,4 @@
+sample_1|Mikä sinun nimesi on?
+sample_2|Tämä herrasmies maksaa kaiken
+sample_3|Onnellista uutta vuotta
+sample_4|Yksi kieli ei ikinä riitä

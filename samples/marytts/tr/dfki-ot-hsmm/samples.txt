@@ -1,0 +1,4 @@
+sample_1|İyiyim sağol, sen nasılsın
+sample_2|Tanıştıǧımıza memnun oldum
+sample_3|Yeni yılınızı kutlar, sağlık ve başarılar dileriz
+sample_4|Bir dil asla yeterli değildir

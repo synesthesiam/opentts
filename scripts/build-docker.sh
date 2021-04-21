@@ -84,6 +84,7 @@ LARYNX_VOCODERS=('voices/larynx/hifi_gan' 'voices/larynx/waveglow')
 
 keep_paths=()
 tags=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}")
+tags=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}-${version}")
 
 if [[ "${LANGUAGE}" == 'ar' ]]; then
     # Arabic
@@ -111,6 +112,7 @@ elif [[ "${LANGUAGE}" == 'en' ]]; then
 
     # Use latest tag for English
     tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:latest")
+    tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${version}")
 elif [[ "${LANGUAGE}" == 'es' ]]; then
     # Spanish
     # Packages: festvox-ellpc11k
