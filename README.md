@@ -2,11 +2,12 @@
 
 Unifies access to multiple open source text to speech systems and voices for many languages, including:
 
+[Listen to voice samples](https://synesthesiam.github.io/opentts/)
+
 * [Larynx](https://github.com/rhasspy/larynx-runtime)
     * English (20), German (1), French (3), Spanish (2), Dutch (3), Russian (3), Swedish (1), Italian (2)
     * Model types available: [GlowTTS](https://github.com/rhasspy/glow-tts-train)
     * Vocoders available: [HiFi-Gan](https://github.com/rhasspy/hifi-gan-train) (3 levels of quality), [WaveGlow](https://github.com/rhasspy/waveglow)
-    * [Samples](https://rhasspy.github.io/larynx)
 * [nanoTTS](https://github.com/gmn/nanotts)
     * English (2), German (1), French (1), Italian (1), Spanish (1)
 * [MaryTTS](http://mary.dfki.de)
@@ -109,11 +110,3 @@ See [swagger.yaml](swagger.yaml)
     * Returns JSON list of supported languages
     * Filter languages using query parameters:
         * `?tts_name` - only text to speech system(s)
-    
-## Voice Samples
-
-Larynx samples are available at https://rhasspy.github.io/larynx
-
-For other voices, see [samples directory](samples/)
-
-eSpeak samples are not included since there are a lot of languages (and they all sound robotic).
