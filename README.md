@@ -84,7 +84,7 @@ This will store WAV files in a temporary directory (inside the Docker container)
 $ docker run -it -v /path/to/cache:/cache -p 5500:5500 synesthesiam/opentts:<LANGUAGE> --cache /cache
 ```
 
-## HTTP Endpoints
+## HTTP API Endpoints
 
 See [swagger.yaml](swagger.yaml)
 
@@ -112,3 +112,31 @@ See [swagger.yaml](swagger.yaml)
     * Returns JSON list of supported languages
     * Filter languages using query parameters:
         * `?tts_name` - only text to speech system(s)
+
+## MaryTTS Compatible Endpoint
+
+Use OpenTTS as a drop-in replacement for [MaryTTS](http://mary.dfki.de/).
+
+The voice format is `<TTS_SYSTEM>:<VOICE_NAME>`. Visit the OpenTTS web UI and copy/paste the "voice id" of your favorite voice here.
+
+You may need to change the port in your `docker run` command to `-p 59125:5500` for compatibility with existing software.
+
+#### Larynx Voice Quality
+
+On the Raspberry Pi, you may need to lower the quality of [Larynx](https://github.com/rhasspy/larynx) voices to get reasonable response times.
+
+This is done by appending the vocoder name to the end of your voice:
+
+```yaml
+tts:
+  - platform: marytts
+    voice:larynx:harvard-glow_tts;hifi_gan:vctk_small
+```
+
+Available vocoders are:
+
+* `hifi_gan:universal_large` (best quality, slowest, default)
+* `hifi_gan:vctk_medium` (medium quality)
+* `hifi_gan:vctk_small` (lowest quality, fastest)
+
+Note that this only applies to Larynx voices.
