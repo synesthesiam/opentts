@@ -12,9 +12,38 @@
 # * pypi - https://github.com/jayfk/docker-pypi-cache
 # -----------------------------------------------------------------------------
 
+FROM ubuntu:focal as python37
+
+ENV LANG C.UTF-8
+
+# IFDEF APT_PROXY
+#! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
+# ENDIF
+
+RUN apt-get update && \
+    apt-get install --yes --no-install-recommends \
+        build-essential \
+        git zlib1g-dev patchelf rsync \
+        libncursesw5-dev libreadline-gplv2-dev libssl-dev \
+        libgdbm-dev libc6-dev libsqlite3-dev libbz2-dev libffi-dev \
+        wget
+
+COPY /download/ /download/
+
+RUN if [ ! -f /download/Python-3.7.10.tar.xz ]; then \
+      wget -O /download/Python-3.7.10.tar.xz 'https://www.python.org/ftp/python/3.7.10/Python-3.7.10.tar.xz'; \
+    fi
+
+RUN cd /download && \
+    tar -xf Python-3.7.10.tar.xz && \
+    cd Python-3.7.10 && \
+    ./configure && \
+    make -j4 && \
+    make install DESTDIR=/app
+
+# -----------------------------------------------------------------------------
+
 FROM ubuntu:focal as build
-ARG TARGETARCH
-ARG TARGETVARIANT
 
 ENV LANG C.UTF-8
 
@@ -25,7 +54,7 @@ ENV LANG C.UTF-8
 RUN --mount=type=cache,target=/var/cache/apt \
     apt-get update && \
     apt-get install --yes --no-install-recommends \
-        python3 python3-pip python3-venv \
+        python3 build-essential \
         wget ca-certificates
 
 # IFDEF PYPI_PROXY
@@ -39,7 +68,25 @@ COPY scripts/create-venv.sh /app/scripts/
 # Copy cache
 COPY download/ /download/
 
+COPY --from=python37 /app/ /app/
+COPY --from=python37 /app/usr/local/include/python3.7m/ /usr/include/
+ENV PYTHON=/app/usr/local/bin/python3
+
+# Install Larynx
+RUN --mount=type=cache,target=/root/.cache/pip \
+    ${PYTHON} -m pip install --upgrade 'pip<=20.2.4' && \
+    ${PYTHON} -m pip install --upgrade wheel setuptools && \
+    ${PYTHON} -m pip install -f /download -r /app/requirements.txt
+
+# Delete extranous gruut data files
+COPY gruut /gruut/
+RUN mkdir -p /gruut && \
+    cd /gruut && \
+    find . -name lexicon.txt -delete
+
 # Install prebuilt nanoTTS
+ARG TARGETARCH
+ARG TARGETVARIANT
 ENV NANOTTS_FILE=nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz
 
 RUN if [ ! -f "/download/${NANOTTS_FILE}" ]; then \
@@ -51,23 +98,9 @@ RUN if [ ! -f "/download/${NANOTTS_FILE}" ]; then \
 RUN mkdir -p /nanotts && \
     tar -C /nanotts -xf "/download/${NANOTTS_FILE}"
 
-
-# Install web server
-ENV PIP_INSTALL='install -f /download'
-RUN --mount=type=cache,target=/root/.cache/pip \
-    cd /app && \
-    export PIP_VERSION='pip<=20.2.4' && \
-    scripts/create-venv.sh
-
-# Delete extranous gruut data files
-COPY gruut /gruut/
-RUN mkdir -p /gruut && \
-    cd /gruut && \
-    find . -name lexicon.txt -delete
-
 # -----------------------------------------------------------------------------
+
 FROM ubuntu:focal as run
-ARG LANGUAGE
 
 ENV LANG C.UTF-8
 
@@ -75,30 +108,16 @@ ENV LANG C.UTF-8
 #! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
-RUN --mount=type=cache,target=/var/cache/apt \
-    apt-get update && \ \
+RUN apt-get update && \ \
     apt-get install --yes --no-install-recommends \
-        python3 python3-pip python3-venv \
-        sox flite espeak-ng
+        sox flite espeak-ng \
+        libssl1.1 libsqlite3-0 libatlas3-base libatomic1
 
+# Install language-specific packages
+ARG LANGUAGE
 RUN mkdir -p /app && echo "${LANGUAGE}" > /app/LANGUAGE
-
-COPY etc/ /app/etc/
 COPY scripts/install-packages.sh /app/
 RUN /app/install-packages.sh "${LANGUAGE}"
-
-# IFDEF APT_PROXY
-#! RUN rm -f /etc/apt/apt.conf.d/01proxy
-# ENDIF
-
-# Copy nanotts
-COPY --from=build /nanotts/ /usr/
-
-# Copy virtual environment
-COPY --from=build /app/ /app/
-
-# Copy gruut data files
-COPY --from=build /gruut/ /app/voices/larynx/gruut/
 
 # Copy voices
 COPY voices/ /app/voices/
@@ -108,7 +127,21 @@ COPY voices/ /app/voices/
 COPY scripts/post-install.sh /app/
 RUN /app/post-install.sh "${LANGUAGE}"
 
+# IFDEF APT_PROXY
+#! RUN rm -f /etc/apt/apt.conf.d/01proxy
+# ENDIF
+
+# Copy nanotts
+COPY --from=build /nanotts/ /usr/
+
+# Copy gruut data files
+COPY --from=build /gruut/ /app/voices/larynx/gruut/
+
+# Copy virtual environment
+COPY --from=build /app/ /app/
+
 # Copy other files
+COPY etc/ /app/etc/
 COPY img/ /app/img/
 COPY css/ /app/css/
 COPY app.py tts.py swagger.yaml /app/
@@ -118,4 +151,4 @@ WORKDIR /app
 
 EXPOSE 5500
 
-ENTRYPOINT ["/app/.venv/bin/python3", "/app/app.py"]
+ENTRYPOINT ["/app/usr/local/bin/python3", "/app/app.py"]
