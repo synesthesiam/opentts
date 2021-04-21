@@ -388,7 +388,10 @@ async def api_process():
         text = request.args.get("INPUT_TEXT", "")
         voice = request.args.get("VOICE", "")
 
-    wav_bytes = await text_to_wav(text, voice)
+    # <VOICE>;<VOCODER>
+    voice, vocoder = voice.split(";", maxsplit=1)
+
+    wav_bytes = await text_to_wav(text, voice, vocoder=vocoder)
 
     return Response(wav_bytes, mimetype="audio/wav")
 
