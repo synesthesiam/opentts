@@ -83,7 +83,7 @@ MARYTTS_JARS=('voices/marytts/lib')
 LARYNX_VOCODERS=('voices/larynx/hifi_gan' 'voices/larynx/waveglow')
 
 keep_paths=()
-tags=("--tag" "synesthesiam/opentts:${LANGUAGE}")
+tags=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}")
 
 if [[ "${LANGUAGE}" == 'ar' ]]; then
     # Arabic
@@ -110,7 +110,7 @@ elif [[ "${LANGUAGE}" == 'en' ]]; then
     keep_paths+=('voices/larynx/en-us' ${LARYNX_VOCODERS[@]})
 
     # Use latest tag for English
-    tags+=("--tag" "synesthesiam/opentts:latest")
+    tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:latest")
 elif [[ "${LANGUAGE}" == 'es' ]]; then
     # Spanish
     # Packages: festvox-ellpc11k
@@ -226,8 +226,7 @@ else
            -f "${DOCKERFILE}" \
            "--platform=${PLATFORMS}" \
            --build-arg "LANGUAGE=${LANGUAGE}" \
-           --tag "${DOCKER_REGISTRY}/synesthesiam/opentts:latest" \
-           --tag "${DOCKER_REGISTRY}/synesthesiam/opentts:${version}" \
+           "${tags[@]}" \
            --push \
            "$@"
 fi

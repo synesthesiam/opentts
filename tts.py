@@ -567,22 +567,24 @@ class FestivalTTS(TTSBase):
     async def voices(self) -> VoicesIterable:
         """Get list of available voices."""
         available_voices: typing.Set[str] = set()
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                "festival",
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-            )
 
-            list_command = "(print (voice.list))"
-            proc_stdout, _ = await proc.communicate(input=list_command.encode())
-            list_result = proc_stdout.decode()
+        if shutil.which("festival"):
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "festival",
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                )
 
-            # (voice1 voice2 ...)
-            available_voices = set(list_result[1:-2].split())
-            _LOGGER.debug("Festival voices: %s", available_voices)
-        except Exception:
-            _LOGGER.exception("Failed to get festival voices")
+                list_command = "(print (voice.list))"
+                proc_stdout, _ = await proc.communicate(input=list_command.encode())
+                list_result = proc_stdout.decode()
+
+                # (voice1 voice2 ...)
+                available_voices = set(list_result[1:-2].split())
+                _LOGGER.debug("Festival voices: %s", available_voices)
+            except Exception:
+                _LOGGER.exception("Failed to get festival voices")
 
         for voice in FestivalTTS.FESTIVAL_VOICES:
             if (not available_voices) or (voice.id in available_voices):

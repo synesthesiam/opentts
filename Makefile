@@ -2,7 +2,7 @@
 .SHELL := bash
 
 all:
-	for lang in bn ca cs de en  es fi fr gu hi it kn mr nl pa ru sv ta te tr; \
+	for lang in ar bn ca cs de en  es fi fr gu hi it kn mr nl pa ru sv ta te tr; \
         do LANGUAGE=$$lang scripts/build-docker.sh; \
     done
 

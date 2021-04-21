@@ -29,6 +29,10 @@ echo "Installing Python dependencies"
 pip3 ${PIP_INSTALL} --upgrade "${PIP_VERSION}"
 pip3 ${PIP_INSTALL} --upgrade wheel setuptools
 
+if [[ -n "${PIP_PREINSTALL_PACKAGES}" ]]; then
+    pip3 ${PIP_INSTALL} ${PIP_PREINSTALL_PACKAGES}
+fi
+
 if [[ -f requirements.txt ]]; then
     pip3 ${PIP_INSTALL} -r requirements.txt
 fi
