@@ -3,7 +3,7 @@
 
 all:
 	for lang in ar bn ca cs de en  es fi fr gu hi it kn mr nl pa ru sv ta te tr; \
-        do LANGUAGE=$$lang scripts/build-docker.sh; \
+        do LANGUAGE=$$lang scripts/build-docker.sh || exit 1; \
     done
 
 amd64:
