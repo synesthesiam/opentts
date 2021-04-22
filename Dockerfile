@@ -122,15 +122,6 @@ RUN /app/install-packages.sh "${LANGUAGE}"
 # Copy voices
 COPY voices/ /app/voices/
 
-# Run post-installation script
-# May use files in /app/voices
-COPY scripts/post-install.sh /app/
-RUN /app/post-install.sh "${LANGUAGE}"
-
-# IFDEF APT_PROXY
-#! RUN rm -f /etc/apt/apt.conf.d/01proxy
-# ENDIF
-
 # Copy nanotts
 COPY --from=build /nanotts/ /usr/
 
@@ -140,8 +131,17 @@ COPY --from=build /gruut/ /app/voices/larynx/gruut/
 # Copy virtual environment
 COPY --from=build /app/ /app/
 
-# Copy other files
+# Run post-installation script
+# May use files in /app/voices, /app/etc, and python
 COPY etc/ /app/etc/
+COPY scripts/post-install.sh /app/
+RUN /app/post-install.sh "${LANGUAGE}"
+
+# IFDEF APT_PROXY
+#! RUN rm -f /etc/apt/apt.conf.d/01proxy
+# ENDIF
+
+# Copy other files
 COPY img/ /app/img/
 COPY css/ /app/css/
 COPY app.py tts.py swagger.yaml /app/
