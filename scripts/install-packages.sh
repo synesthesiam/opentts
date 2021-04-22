@@ -29,11 +29,3 @@ if [[ -n "${lang_packages}" ]]; then
     apt-get install --yes --no-install-recommends \
             ${lang_packages}
 fi
-
-if [[ "${LANGUAGE}" == 'it' ]]; then
-    # Italian
-    # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=943402
-    # https://salsa.debian.org/tts-team/festival-it/-/blob/master/debian/patches/03_fix_return_utt_synth_types.patch
-
-    patch -d /usr/share -p1 < /app/etc/03_fix_return_utt_synth_types.patch
-fi
