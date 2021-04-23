@@ -51,8 +51,7 @@ ENV LANG C.UTF-8
 #! RUN echo 'Acquire::http { Proxy "http://${APT_PROXY_HOST}:${APT_PROXY_PORT}"; };' >> /etc/apt/apt.conf.d/01proxy
 # ENDIF
 
-RUN --mount=type=cache,target=/var/cache/apt \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install --yes --no-install-recommends \
         python3 build-essential \
         wget ca-certificates
@@ -73,8 +72,7 @@ COPY --from=python37 /app/usr/local/include/python3.7m/ /usr/include/
 ENV PYTHON=/app/usr/local/bin/python3
 
 # Install Larynx
-RUN --mount=type=cache,target=/root/.cache/pip \
-    ${PYTHON} -m pip install --upgrade 'pip<=20.2.4' && \
+RUN ${PYTHON} -m pip install --upgrade 'pip<=20.2.4' && \
     ${PYTHON} -m pip install --upgrade wheel setuptools && \
     ${PYTHON} -m pip install -f /download -r /app/requirements.txt
 
