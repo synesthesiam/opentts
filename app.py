@@ -389,7 +389,9 @@ async def api_process():
         voice = request.args.get("VOICE", "")
 
     # <VOICE>;<VOCODER>
-    voice, vocoder = voice.split(";", maxsplit=1)
+    vocoder: typing.Optional[str] = None
+    if ";" in voice:
+        voice, vocoder = voice.split(";", maxsplit=1)
 
     wav_bytes = await text_to_wav(text, voice, vocoder=vocoder)
 
