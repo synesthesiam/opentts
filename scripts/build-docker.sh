@@ -84,7 +84,7 @@ LARYNX_VOCODERS=('voices/larynx/hifi_gan' 'voices/larynx/waveglow')
 
 keep_paths=()
 tags=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}")
-tags=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}-${version}")
+tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}-${version}")
 
 if [[ "${LANGUAGE}" == 'ar' ]]; then
     # Arabic
@@ -188,11 +188,6 @@ if [[ -n "${NOBUILDX}" ]]; then
         # Guess architecture
         cpu_arch="$(uname -m)"
         case "${cpu_arch}" in
-            armv6l)
-                export TARGETARCH=arm
-                export TARGETVARIANT=v6
-                ;;
-
             armv7l)
                 export TARGETARCH=arm
                 export TARGETVARIANT=v7
