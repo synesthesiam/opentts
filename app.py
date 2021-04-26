@@ -230,6 +230,8 @@ async def text_to_wav(
     voice: str,
     vocoder: typing.Optional[str] = None,
     denoiser_strength: typing.Optional[float] = None,
+    noise_scale: typing.Optional[float] = None,
+    length_scale: typing.Optional[float] = None,
     use_cache: bool = True,
 ) -> bytes:
     """Runs TTS for each line and accumulates all audio into a single WAV."""
@@ -275,7 +277,12 @@ async def text_to_wav(
                 "Synthesizing line %s (%s char(s))", line_index + 1, len(line)
             )
             line_wav_bytes = await tts.say(
-                line, voice_id, vocoder=vocoder, denoiser_strength=denoiser_strength
+                line,
+                voice_id,
+                vocoder=vocoder,
+                denoiser_strength=denoiser_strength,
+                noise_scale=noise_scale,
+                length_scale=length_scale,
             )
             assert line_wav_bytes, f"No WAV audio from line: {line}"
             _LOGGER.debug(
@@ -393,17 +400,30 @@ async def app_say() -> Response:
     assert text, "No text provided"
 
     vocoder = request.args.get("vocoder", _LARYNX_QUALITY.get(args.larynx_quality))
+
+    # Denoiser strength
     denoiser_strength = request.args.get(
         "denoiserStrength", args.larynx_denoiser_strength
     )
     if denoiser_strength is not None:
         denoiser_strength = float(denoiser_strength)
 
+    # Noise and length scales
+    noise_scale = request.args.get("noiseScale", args.larynx_noise_scale)
+    if noise_scale is not None:
+        noise_scale = float(noise_scale)
+
+    length_scale = request.args.get("lengthScale", args.larynx_length_scale)
+    if length_scale is not None:
+        length_scale = float(length_scale)
+
     wav_bytes = await text_to_wav(
         text,
         voice,
         vocoder=vocoder,
         denoiser_strength=denoiser_strength,
+        noise_scale=noise_scale,
+        length_scale=length_scale,
         use_cache=use_cache,
     )
 
@@ -425,11 +445,18 @@ async def api_process():
         voice = request.args.get("VOICE", "")
 
     # <VOICE>;<VOCODER>
-    vocoder: typing.Optional[str] = None
+    vocoder: typing.Optional[str] = _LARYNX_QUALITY.get(args.larynx_quality)
     if ";" in voice:
         voice, vocoder = voice.split(";", maxsplit=1)
 
-    wav_bytes = await text_to_wav(text, voice, vocoder=vocoder)
+    wav_bytes = await text_to_wav(
+        text,
+        voice,
+        vocoder=vocoder,
+        denoiser_strength=args.larynx_denoiser_strength,
+        noise_scale=args.larynx_noise_scale,
+        length_scale=args.larynx_length_scale,
+    )
 
     return Response(wav_bytes, mimetype="audio/wav")
 

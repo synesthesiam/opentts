@@ -121,7 +121,7 @@ The voice format is `<TTS_SYSTEM>:<VOICE_NAME>`. Visit the OpenTTS web UI and co
 
 You may need to change the port in your `docker run` command to `-p 59125:5500` for compatibility with existing software.
 
-#### Larynx Voice Quality
+### Larynx Voice Quality
 
 On the Raspberry Pi, you may need to lower the quality of [Larynx](https://github.com/rhasspy/larynx) voices to get reasonable response times.
 
@@ -140,3 +140,11 @@ Available vocoders are:
 * `hifi_gan:vctk_small` (lowest quality, fastest)
 
 Note that this only applies to Larynx voices.
+
+## Default Larynx Settings
+
+Default settings for [Larynx](https://github.com/rhasspy/larynx) can be provided on the command-line:
+
+* `--larynx-quality` - vocoder quality ("high", "medium", or "low", default: "high")
+* `--larynx-noise-scale` - voice volatility (0-1, default: 0.333)
+* `--larynx-length-scale` - voice speed (< 1 is faster, default: 1.0)

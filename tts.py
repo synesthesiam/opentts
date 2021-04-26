@@ -1280,6 +1280,8 @@ class LarynxTTS(TTSBase):
         """Speak text as WAV."""
         vocoder: typing.Optional[str] = kwargs.get("vocoder")
         denoiser_strength: typing.Optional[float] = kwargs.get("denoiser_strength")
+        noise_scale: typing.Optional[float] = kwargs.get("noise_scale")
+        length_scale: typing.Optional[float] = kwargs.get("length_scale")
 
         voice = self.larynx_voices[voice_id]
 
@@ -1351,12 +1353,29 @@ class LarynxTTS(TTSBase):
         from larynx.wavfile import write as wav_write
 
         tts_settings = voice.tag.get("tts") if voice.tag else None
+
+        if noise_scale is not None:
+            # Override noise scale (voice volatility)
+            tts_settings = tts_settings or {}
+            tts_settings["noise_scale"] = noise_scale
+
+        if length_scale is not None:
+            # Override length scale (< 1 is faster)
+            tts_settings = tts_settings or {}
+            tts_settings["length_scale"] = length_scale
+
         vocoder_settings = voice.tag.get("vocoder") if voice.tag else None
 
         if denoiser_strength is not None:
             # Override denoiser strength
             vocoder_settings = vocoder_settings or {}
             vocoder_settings["denoiser_strength"] = denoiser_strength
+
+        if tts_settings is not None:
+            _LOGGER.debug("TTS settings: %s", tts_settings)
+
+        if vocoder_settings is not None:
+            _LOGGER.debug("Vocoder settings: %s", vocoder_settings)
 
         # Run asynchronously in executor
         loop = asyncio.get_running_loop()
