@@ -9,7 +9,7 @@ Unifies access to multiple open source text to speech systems and voices for man
 ## Voices
 
 * [Larynx](https://github.com/rhasspy/larynx-runtime)
-    * English (20), German (1), French (3), Spanish (2), Dutch (3), Russian (3), Swedish (1), Italian (2)
+    * English (21), German (5), French (3), Spanish (2), Dutch (3), Russian (3), Swedish (1), Italian (2)
     * Model types available: [GlowTTS](https://github.com/rhasspy/glow-tts-train)
     * Vocoders available: [HiFi-Gan](https://github.com/rhasspy/hifi-gan-train) (3 levels of quality), [WaveGlow](https://github.com/rhasspy/waveglow)
 * [nanoTTS](https://github.com/gmn/nanotts)

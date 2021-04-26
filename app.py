@@ -91,6 +91,33 @@ parser.add_argument(
 parser.add_argument(
     "--debug", action="store_true", help="Print DEBUG messages to console"
 )
+
+# Larynx-specific settings
+parser.add_argument(
+    "--larynx-quality",
+    choices=["high", "medium", "low"],
+    default="high",
+    help="Larynx vocoder quality to use if not specified in API call (default: high)",
+)
+parser.add_argument(
+    "--larynx-denoiser-strength",
+    type=float,
+    default=0.001,
+    help="Larynx denoiser strength to use if not specified in API call (default: 0.001)",
+)
+parser.add_argument(
+    "--larynx-noise-scale",
+    type=float,
+    default=0.333,
+    help="Larynx noise scale (voice volatility) to use if not specified in API call (default: 0.333)",
+)
+parser.add_argument(
+    "--larynx-length-scale",
+    type=float,
+    default=1.0,
+    help="Larynx length scale (< 1 is faster) to use if not specified in API call (default: 1.0)",
+)
+
 args = parser.parse_args()
 
 if args.debug:
@@ -189,6 +216,13 @@ if args.debug:
 app = quart_cors.cors(app)
 
 # -----------------------------------------------------------------------------
+
+# quality level -> vocoder name
+_LARYNX_QUALITY = {
+    "high": "hifi_gan:universal_large",
+    "medium": "hifi_gan:vctk_medium",
+    "low": "hifi_gan:vctk_low",
+}
 
 
 async def text_to_wav(
@@ -358,8 +392,10 @@ async def app_say() -> Response:
 
     assert text, "No text provided"
 
-    vocoder = request.args.get("vocoder")
-    denoiser_strength = request.args.get("denoiserStrength")
+    vocoder = request.args.get("vocoder", _LARYNX_QUALITY.get(args.larynx_quality))
+    denoiser_strength = request.args.get(
+        "denoiserStrength", args.larynx_denoiser_strength
+    )
     if denoiser_strength is not None:
         denoiser_strength = float(denoiser_strength)
 
