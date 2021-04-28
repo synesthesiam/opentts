@@ -96,13 +96,85 @@ COPY --from=build /nanotts/ /usr/
 # Copy virtual environment
 COPY --from=build /app/ /app/
 
-# Install language-specific packages
-ARG LANGUAGE
-RUN mkdir -p /app && echo "${LANGUAGE}" > /app/LANGUAGE
-COPY scripts/install-packages.sh /app/
+# Install optional packages
+# IFDEF INSTALL_FESTIVAL
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festival
+# ENDIF
 
-RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-    /app/install-packages.sh "${LANGUAGE}"
+# IFDEF INSTALL_JAVA
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        openjdk-11-jre-headless
+# ENDIF
+
+# IFDEF INSTALL_LARYNX
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        libopenblas-base libgomp1
+# ENDIF
+
+# Install language-specific packages
+# IFDEF LANGUAGE_CA
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-ca-ona-hts
+# ENDIF
+
+# IFDEF LANGUAGE_CS
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-czech-dita festvox-czech-krb festvox-czech-machac festvox-czech-ph
+# ENDIF
+
+# IFDEF LANGUAGE_EN
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-don festvox-en1 festvox-kallpc16k festvox-kdlpc16k festvox-rablpc16k festvox-us1 festvox-us2 festvox-us3 festvox-us-slt-hts
+# ENDIF
+
+# IFDEF LANGUAGE_ES
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-ellpc11k
+# ENDIF
+
+# IFDEF LANGUAGE_FI
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-suopuhe-lj festvox-suopuhe-mv
+# ENDIF
+
+# IFDEF LANGUAGE_HI
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-hi-nsk
+# ENDIF
+
+# IFDEF LANGUAGE_IT
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        patch festvox-italp16k festvox-itapc16k
+# ENDIF
+
+# IFDEF LANGUAGE_MR
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-mr-nsk
+# ENDIF
+
+# IFDEF LANGUAGE_RU
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-ru
+# ENDIF
+
+# IFDEF LANGUAGE_TE
+# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
+      apt-get install --yes --no-install-recommends \
+        festvox-te-nsk
+# ENDIF
 
 # Copy voices
 COPY voices/ /app/voices/
@@ -110,13 +182,22 @@ COPY voices/ /app/voices/
 # Copy gruut data files
 COPY --from=build /gruut/ /app/voices/larynx/gruut/
 
-# Run post-installation script
+# Do post-installation
 # May use files in /app/voices, /app/etc, and python
 COPY etc/ /app/etc/
-COPY scripts/post-install.sh /app/
 
-RUN --mount=type=cache,id=pip-run,target=/root/.cache/pip \
-    /app/post-install.sh "${LANGUAGE}"
+# IFDEF LANGUAGE_AR
+# RUN --mount=type=cache,id=pip-run,target=/root/.cache/pip \
+      /app/usr/local/bin/python3 -m pip install \
+        'mishkal~=0.4.0' 'codernitydb3'
+# RUN cp /app/voices/festival/ar/languages/language_arabic.scm /usr/share/festival/languages/ && \
+      mkdir -p /usr/share/festival/voices/arabic && \
+      cp -r /app/voices/festival/ar/voices/ara_norm_ziad_hts /usr/share/festival/voices/arabic/
+# ENDIF
+
+# IFDEF LANGUAGE_IT
+# RUN patch -d /usr/share -p1 < /app/etc/03_fix_return_utt_synth_types.patch
+# ENDIF
 
 # Copy other files
 COPY img/ /app/img/
