@@ -37,7 +37,170 @@ version="$(cat "${src_dir}/VERSION")"
 
 echo "Language: ${LANGUAGE}"
 
+# -----------------------------------------------------------------------------
+
 DOCKERFILE="${src_dir}/Dockerfile"
+
+# Write .dockerignore file
+DOCKERIGNORE="${src_dir}/.dockerignore"
+cp -f "${src_dir}/.dockerignore.in" "${DOCKERIGNORE}"
+
+# Determine voice paths to keep in Docker image
+MARYTTS_JARS=('voices/marytts/lib')
+LARYNX_VOCODERS=('voices/larynx/hifi_gan' 'voices/larynx/waveglow')
+
+keep_paths=()
+tags=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}")
+tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}-${version}")
+
+# Extra package variables
+# INSTALL_FESTIVAL
+# INSTALL_JAVA
+# INSTALL_LARYNX
+
+if [[ "${LANGUAGE}" == 'ar' ]]; then
+    # Arabic
+    export LANGUAGE_AR=1
+    export INSTALL_FESTIVAL=1
+    keep_paths+=('voices/festival/ar')
+elif [[ "${LANGUAGE}" == 'bn' ]]; then
+    # Bengali
+    export LANGUAGE_BN=1
+    keep_paths+=('voices/flite/cmu_indic_ben_rm.flitevox')
+elif [[ "${LANGUAGE}" == 'ca' ]]; then
+    # Catalan
+    export LANGUAGE_CA=1
+    export INSTALL_FESTIVAL=1
+    # Packages: festvox-ca-ona-hts
+    :
+elif [[ "${LANGUAGE}" == 'cs' ]]; then
+    # Czech
+    export LANGUAGE_CS=1
+    export INSTALL_FESTIVAL=1
+    # Packages: festvox-czech-dita festvox-czech-krb festvox-czech-machac festvox-czech-ph
+    :
+elif [[ "${LANGUAGE}" == 'de' ]]; then
+    # German
+    export LANGUAGE_DE=1
+    export INSTALL_FESTIVAL=1
+    export INSTALL_JAVA=1
+    export INSTALL_LARYNX=1
+    keep_paths+=('voices/marytts/de' ${MARYTTS_JARS})
+    keep_paths+=('gruut/de-de' 'voices/larynx/de-de' ${LARYNX_VOCODERS[@]})
+elif [[ "${LANGUAGE}" == 'en' ]]; then
+    # English
+    export LANGUAGE_EN=1
+    export INSTALL_FESTIVAL=1
+    export INSTALL_JAVA=1
+    export INSTALL_LARYNX=1
+    # Packages: festvox-don festvox-en1 festvox-kallpc16k festvox-kdlpc16k festvox-rablpc16k festvox-us1 festvox-us2 festvox-us3 festvox-us-slt-hts
+    keep_paths+=('voices/marytts/en-GB' 'voices/marytts/en-US' ${MARYTTS_JARS})
+    keep_paths+=('voices/larynx/en-us' ${LARYNX_VOCODERS[@]})
+
+    # Use latest tag for English
+    tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:latest")
+    tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${version}")
+elif [[ "${LANGUAGE}" == 'es' ]]; then
+    # Spanish
+    export LANGUAGE_ES=1
+    export INSTALL_FESTIVAL=1
+    export INSTALL_LARYNX=1
+    # Packages: festvox-ellpc11k
+    keep_paths+=('gruut/es-es' 'voices/larynx/es-es' ${LARYNX_VOCODERS[@]})
+elif [[ "${LANGUAGE}" == 'fi' ]]; then
+    # Finish
+    export LANGUAGE_FI=1
+    export INSTALL_FESTIVAL=1
+    # Packages: festvox-suopuhe-lj festvox-suopuhe-mv
+    :
+elif [[ "${LANGUAGE}" == 'fr' ]]; then
+    # French
+    export LANGUAGE_FR=1
+    export INSTALL_JAVA=1
+    export INSTALL_LARYNX=1
+    keep_paths+=('voices/marytts/fr' ${MARYTTS_JARS})
+    keep_paths+=('gruut/fr-fr' 'voices/larynx/fr-fr' ${LARYNX_VOCODERS[@]})
+elif [[ "${LANGUAGE}" == 'gu' ]]; then
+    # Gujarati
+    export LANGUAGE_GU=1
+    keep_paths+=('voices/flite/cmu_indic_guj_ad.flitevox' 'voices/flite/cmu_indic_guj_dp.flitevox' 'voices/flite/cmu_indic_guj_kt.flitevox')
+elif [[ "${LANGUAGE}" == 'hi' ]]; then
+    # Hindi
+    export LANGUAGE_HI=1
+    export INSTALL_FESTIVAL=1
+    # Packages: festvox-hi-nsk
+    keep_paths+=('voices/flite/cmu_indic_hin_ab.flitevox')
+elif [[ "${LANGUAGE}" == 'it' ]]; then
+    # Italian
+    export LANGUAGE_IT=1
+    export INSTALL_FESTIVAL=1
+    export INSTALL_JAVA=1
+    export INSTALL_LARYNX=1
+    # Packages: festvox-italp16k festvox-itapc16k
+    keep_paths+=('voices/marytts/it' ${MARYTTS_JARS})
+    keep_paths+=('gruut/it-it' 'voices/larynx/it-it' ${LARYNX_VOCODERS[@]})
+elif [[ "${LANGUAGE}" == 'kn' ]]; then
+    # Kannada
+    export LANGUAGE_BN=1
+    keep_paths+=('voices/flite/cmu_indic_kan_plv.flitevox')
+elif [[ "${LANGUAGE}" == 'mr' ]]; then
+    # Marathi
+    export LANGUAGE_MR=1
+    export INSTALL_FESTIVAL=1
+    # Packages: festvox-mr-nsk
+    keep_paths+=('voices/flite/cmu_indic_mar_aup.flitevox' 'voices/flite/cmu_indic_mar_slp.flitevox')
+elif [[ "${LANGUAGE}" == 'nl' ]]; then
+    # Dutch
+    export LANGUAGE_NL=1
+    export INSTALL_LARYNX=1
+    keep_paths+=('gruut/nl' 'voices/larynx/nl' ${LARYNX_VOCODERS[@]})
+elif [[ "${LANGUAGE}" == 'pa' ]]; then
+    # Punjabi
+    export LANGUAGE_PA=1
+    keep_paths+=('voices/flite/cmu_indic_pan_amp.flitevox')
+elif [[ "${LANGUAGE}" == 'ru' ]]; then
+    # Russian
+    export LANGUAGE_RU=1
+    export INSTALL_FESTIVAL=1
+    export INSTALL_JAVA=1
+    export INSTALL_LARYNX=1
+    # Packages: festvox-ru
+    keep_paths+=('voices/marytts/ru' ${MARYTTS_JARS})
+    keep_paths+=('gruut/ru-ru' 'voices/larynx/ru-ru' ${LARYNX_VOCODERS[@]})
+elif [[ "${LANGUAGE}" == 'sv' ]]; then
+    # Swedish
+    export LANGUAGE_SV=1
+    export INSTALL_JAVA=1
+    export INSTALL_LARYNX=1
+    keep_paths+=('voices/marytts/sv' ${MARYTTS_JARS})
+    keep_paths+=('gruut/sv-se' 'voices/larynx/sv-se' ${LARYNX_VOCODERS[@]})
+elif [[ "${LANGUAGE}" == 'ta' ]]; then
+    # Tamil
+    export LANGUAGE_TA=1
+    keep_paths+=('voices/flite/cmu_indic_tam_sdr.flitevox')
+elif [[ "${LANGUAGE}" == 'te' ]]; then
+    # Telugu
+    export LANGUAGE_TE=1
+    export INSTALL_FESTIVAL=1
+    export INSTALL_JAVA=1
+    # Packages: festvox-te-nsk
+    keep_paths+=('voices/marytts/te' ${MARYTTS_JARS})
+    keep_paths+=('voices/flite/cmu_indic_tel_kpn.flitevox' 'voices/flite/cmu_indic_tel_sk.flitevox' 'voices/flite/cmu_indic_tel_ss.flitevox')
+elif [[ "${LANGUAGE}" == 'tr' ]]; then
+    # Turkish
+    export LANGUAGE_TR=1
+    export INSTALL_JAVA=1
+    keep_paths+=('voices/marytts/tr' ${MARYTTS_JARS})
+else
+    echo "Unknown language: ${LANGUAGE}" >&2
+    exit 1
+fi
+
+for keep_path in "${keep_paths[@]}"; do
+    echo "!${keep_path}" >> "${DOCKERIGNORE}"
+done
+
+# -----------------------------------------------------------------------------
 
 if [[ -n "${PROXY}" ]]; then
     if [[ -z "${PROXY_HOST}" ]]; then
@@ -76,111 +239,6 @@ if [[ -n "${PROXY}" ]]; then
     DOCKERFILE="${temp_dockerfile}"
 fi
 
-# Write .dockerignore file
-DOCKERIGNORE="${src_dir}/.dockerignore"
-cp -f "${src_dir}/.dockerignore.in" "${DOCKERIGNORE}"
-
-# Determine voice paths to keep in Docker image
-MARYTTS_JARS=('voices/marytts/lib')
-LARYNX_VOCODERS=('voices/larynx/hifi_gan' 'voices/larynx/waveglow')
-
-keep_paths=()
-tags=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}")
-tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${LANGUAGE}-${version}")
-
-if [[ "${LANGUAGE}" == 'ar' ]]; then
-    # Arabic
-    keep_paths+=('voices/festival/ar')
-elif [[ "${LANGUAGE}" == 'bn' ]]; then
-    # Bengali
-    keep_paths+=('voices/flite/cmu_indic_ben_rm.flitevox')
-elif [[ "${LANGUAGE}" == 'ca' ]]; then
-    # Catalan
-    # Packages: festvox-ca-ona-hts
-    :
-elif [[ "${LANGUAGE}" == 'cs' ]]; then
-    # Czech
-    # Packages: festvox-czech-dita festvox-czech-krb festvox-czech-machac festvox-czech-ph
-    :
-elif [[ "${LANGUAGE}" == 'de' ]]; then
-    # German
-    keep_paths+=('voices/marytts/de' ${MARYTTS_JARS})
-    keep_paths+=('gruut/de-de' 'voices/larynx/de-de' ${LARYNX_VOCODERS[@]})
-elif [[ "${LANGUAGE}" == 'en' ]]; then
-    # English
-    # Packages: festvox-don festvox-en1 festvox-kallpc16k festvox-kdlpc16k festvox-rablpc16k festvox-us1 festvox-us2 festvox-us3 festvox-us-slt-hts
-    keep_paths+=('voices/marytts/en-GB' 'voices/marytts/en-US' ${MARYTTS_JARS})
-    keep_paths+=('voices/larynx/en-us' ${LARYNX_VOCODERS[@]})
-
-    # Use latest tag for English
-    tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:latest")
-    tags+=("--tag" "${DOCKER_REGISTRY}/synesthesiam/opentts:${version}")
-elif [[ "${LANGUAGE}" == 'es' ]]; then
-    # Spanish
-    # Packages: festvox-ellpc11k
-    keep_paths+=('gruut/es-es' 'voices/larynx/es-es' ${LARYNX_VOCODERS[@]})
-elif [[ "${LANGUAGE}" == 'fi' ]]; then
-    # Finish
-    # Packages: festvox-suopuhe-lj festvox-suopuhe-mv
-    :
-elif [[ "${LANGUAGE}" == 'fr' ]]; then
-    # French
-    keep_paths+=('voices/marytts/fr' ${MARYTTS_JARS})
-    keep_paths+=('gruut/fr-fr' 'voices/larynx/fr-fr' ${LARYNX_VOCODERS[@]})
-elif [[ "${LANGUAGE}" == 'gu' ]]; then
-    # Gujarati
-    keep_paths+=('voices/flite/cmu_indic_guj_ad.flitevox' 'voices/flite/cmu_indic_guj_dp.flitevox' 'voices/flite/cmu_indic_guj_kt.flitevox')
-elif [[ "${LANGUAGE}" == 'hi' ]]; then
-    # Hindi
-    # Packages: festvox-hi-nsk
-    keep_paths+=('voices/flite/cmu_indic_hin_ab.flitevox')
-elif [[ "${LANGUAGE}" == 'it' ]]; then
-    # Italian
-    # Packages: festvox-italp16k festvox-itapc16k
-    keep_paths+=('voices/marytts/it' ${MARYTTS_JARS})
-    keep_paths+=('gruut/it-it' 'voices/larynx/it-it' ${LARYNX_VOCODERS[@]})
-elif [[ "${LANGUAGE}" == 'kn' ]]; then
-    # Kannada
-    keep_paths+=('voices/flite/cmu_indic_kan_plv.flitevox')
-elif [[ "${LANGUAGE}" == 'mr' ]]; then
-    # Marathi
-    # Packages: festvox-mr-nsk
-    keep_paths+=('voices/flite/cmu_indic_mar_aup.flitevox' 'voices/flite/cmu_indic_mar_slp.flitevox')
-elif [[ "${LANGUAGE}" == 'nl' ]]; then
-    # Dutch
-    keep_paths+=('gruut/nl' 'voices/larynx/nl' ${LARYNX_VOCODERS[@]})
-elif [[ "${LANGUAGE}" == 'pa' ]]; then
-    # Punjabi
-    keep_paths+=('voices/flite/cmu_indic_pan_amp.flitevox')
-elif [[ "${LANGUAGE}" == 'ru' ]]; then
-    # Russian
-    # Packages: festvox-ru
-    keep_paths+=('voices/marytts/ru' ${MARYTTS_JARS})
-    keep_paths+=('gruut/ru-ru' 'voices/larynx/ru-ru' ${LARYNX_VOCODERS[@]})
-elif [[ "${LANGUAGE}" == 'sv' ]]; then
-    # Swedish
-    keep_paths+=('voices/marytts/sv' ${MARYTTS_JARS})
-    keep_paths+=('gruut/sv-se' 'voices/larynx/sv-se' ${LARYNX_VOCODERS[@]})
-elif [[ "${LANGUAGE}" == 'ta' ]]; then
-    # Tamil
-    keep_paths+=('voices/flite/cmu_indic_tam_sdr.flitevox')
-elif [[ "${LANGUAGE}" == 'te' ]]; then
-    # Telugu
-    # Packages: festvox-te-nsk
-    keep_paths+=('voices/marytts/te' ${MARYTTS_JARS})
-    keep_paths+=('voices/flite/cmu_indic_tel_kpn.flitevox' 'voices/flite/cmu_indic_tel_sk.flitevox' 'voices/flite/cmu_indic_tel_ss.flitevox')
-elif [[ "${LANGUAGE}" == 'tr' ]]; then
-    # Turkish
-    keep_paths+=('voices/marytts/tr' ${MARYTTS_JARS})
-else
-    echo "Unknown language: ${LANGUAGE}" >&2
-    exit 1
-fi
-
-for keep_path in "${keep_paths[@]}"; do
-    echo "!${keep_path}" >> "${DOCKERIGNORE}"
-done
-
 # -----------------------------------------------------------------------------
 
 if [[ -n "${NOBUILDX}" ]]; then
@@ -215,7 +273,6 @@ if [[ -n "${NOBUILDX}" ]]; then
         -f "${DOCKERFILE}" \
         --build-arg "TARGETARCH=${TARGETARCH}" \
         --build-arg "TARGETVARIANT=${TARGETVARIANT}" \
-        --build-arg "LANGUAGE=${LANGUAGE}" \
         "${tags[@]}" \
         "$@"
 else
@@ -224,7 +281,6 @@ else
            "${src_dir}" \
            -f "${DOCKERFILE}" \
            "--platform=${PLATFORMS}" \
-           --build-arg "LANGUAGE=${LANGUAGE}" \
            "${tags[@]}" \
            --push \
            "$@"
