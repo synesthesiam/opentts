@@ -35,6 +35,8 @@ version="$(cat "${src_dir}/VERSION")"
 # te (Telugu)
 # tr (Turkish)
 
+echo "Language: ${LANGUAGE}"
+
 DOCKERFILE="${src_dir}/Dockerfile"
 
 if [[ -n "${PROXY}" ]]; then
