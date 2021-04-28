@@ -221,7 +221,7 @@ app = quart_cors.cors(app)
 _LARYNX_QUALITY = {
     "high": "hifi_gan:universal_large",
     "medium": "hifi_gan:vctk_medium",
-    "low": "hifi_gan:vctk_low",
+    "low": "hifi_gan:vctk_small",
 }
 
 
