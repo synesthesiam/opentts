@@ -1,3 +1,22 @@
+## [2.0] - 2021 Apr 29
+
+### Added
+
+- Larynx TTS with 40 voices (https://github.com/rhasspy/larynx)
+- Embedded MaryTTS with 19 voices (https://github.com/synesthesiam/marytts-txt2wav)
+- Festival Arabic voice (https://github.com/linuxscout/festival-tts-arabic-voices)
+- MaryTTS-compatible endpoint at /process
+- Optional WAV cache (--cache)
+- New voice samples page: https://synesthesiam.github.io/opentts/
+
+### Changed
+
+- Docker images are split by language (synesthesiam/opentts:<LANG>) to avoid a 5GB+ image
+- Allow multiple lines of text input
+- Using hypercorn web server
+- API test page is now at /openapi/ instead of /api/
+- Dark theme for web UI
+
 ## [1.1] - 2020 Sep 29
 
 ### Added
