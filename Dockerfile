@@ -1,6 +1,11 @@
 # -----------------------------------------------------------------------------
 # Dockerfile for OpenTTS (https://github.com/synesthesiam/opentts)
 # Requires Docker buildx: https://docs.docker.com/buildx/working-with-buildx/
+#
+# The IFDEF statements are handled by docker/preprocess.sh. These are just
+# comments that are uncommented if the environment variable after the IFDEF is
+# not empty.
+#
 # See scripts/build-docker.sh
 # -----------------------------------------------------------------------------
 
@@ -98,82 +103,82 @@ COPY --from=build /app/ /app/
 
 # Install optional packages
 # IFDEF INSTALL_FESTIVAL
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festival
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festival
 # ENDIF
 
 # IFDEF INSTALL_JAVA
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        openjdk-11-jre-headless
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       openjdk-11-jre-headless
 # ENDIF
 
 # IFDEF INSTALL_LARYNX
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        libopenblas-base libgomp1
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       libopenblas-base libgomp1
 # ENDIF
 
 # Install language-specific packages
 # IFDEF LANGUAGE_CA
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-ca-ona-hts
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-ca-ona-hts
 # ENDIF
 
 # IFDEF LANGUAGE_CS
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-czech-dita festvox-czech-krb festvox-czech-machac festvox-czech-ph
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-czech-dita festvox-czech-krb festvox-czech-machac festvox-czech-ph
 # ENDIF
 
 # IFDEF LANGUAGE_EN
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-don festvox-en1 festvox-kallpc16k festvox-kdlpc16k festvox-rablpc16k festvox-us1 festvox-us2 festvox-us3 festvox-us-slt-hts
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-don festvox-en1 festvox-kallpc16k festvox-kdlpc16k festvox-rablpc16k festvox-us1 festvox-us2 festvox-us3 festvox-us-slt-hts
 # ENDIF
 
 # IFDEF LANGUAGE_ES
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-ellpc11k
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-ellpc11k
 # ENDIF
 
 # IFDEF LANGUAGE_FI
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-suopuhe-lj festvox-suopuhe-mv
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-suopuhe-lj festvox-suopuhe-mv
 # ENDIF
 
 # IFDEF LANGUAGE_HI
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-hi-nsk
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-hi-nsk
 # ENDIF
 
 # IFDEF LANGUAGE_IT
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        patch festvox-italp16k festvox-itapc16k
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       patch festvox-italp16k festvox-itapc16k
 # ENDIF
 
 # IFDEF LANGUAGE_MR
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-mr-nsk
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-mr-nsk
 # ENDIF
 
 # IFDEF LANGUAGE_RU
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-ru
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-ru
 # ENDIF
 
 # IFDEF LANGUAGE_TE
-# RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \
-      apt-get install --yes --no-install-recommends \
-        festvox-te-nsk
+#! RUN --mount=type=cache,id=apt-run,target=/var/apt/cache \\
+#!     apt-get install --yes --no-install-recommends \\
+#!       festvox-te-nsk
 # ENDIF
 
 # Copy voices
@@ -187,16 +192,16 @@ COPY --from=build /gruut/ /app/voices/larynx/gruut/
 COPY etc/ /app/etc/
 
 # IFDEF LANGUAGE_AR
-# RUN --mount=type=cache,id=pip-run,target=/root/.cache/pip \
-      /app/usr/local/bin/python3 -m pip install \
-        'mishkal~=0.4.0' 'codernitydb3'
-# RUN cp /app/voices/festival/ar/languages/language_arabic.scm /usr/share/festival/languages/ && \
-      mkdir -p /usr/share/festival/voices/arabic && \
-      cp -r /app/voices/festival/ar/voices/ara_norm_ziad_hts /usr/share/festival/voices/arabic/
+#! RUN --mount=type=cache,id=pip-run,target=/root/.cache/pip \\
+#!     /app/usr/local/bin/python3 -m pip install \\
+#!       'mishkal~=0.4.0' 'codernitydb3'
+#! RUN cp /app/voices/festival/ar/languages/language_arabic.scm /usr/share/festival/languages/ && \\
+#!     mkdir -p /usr/share/festival/voices/arabic && \\
+#!     cp -r /app/voices/festival/ar/voices/ara_norm_ziad_hts /usr/share/festival/voices/arabic/
 # ENDIF
 
 # IFDEF LANGUAGE_IT
-# RUN patch -d /usr/share -p1 < /app/etc/03_fix_return_utt_synth_types.patch
+#! RUN patch -d /usr/share -p1 < /app/etc/03_fix_return_utt_synth_types.patch
 # ENDIF
 
 # Copy other files
@@ -204,6 +209,10 @@ COPY img/ /app/img/
 COPY css/ /app/css/
 COPY app.py tts.py swagger.yaml /app/
 COPY templates/index.html /app/templates/
+
+# Set default language for server
+ARG OPENTTS_LANG
+RUN echo "${OPENTTS_LANG}" > /app/LANGUAGE
 
 # Need python3 in PATH for phonetisaurus
 ENV PATH=/app/usr/local/bin:${PATH}
