@@ -6,6 +6,8 @@ import dataclasses
 import hashlib
 import io
 import logging
+import math
+import shutil
 import signal
 import tempfile
 import time
@@ -25,16 +27,16 @@ from quart import (
     request,
     send_from_directory,
 )
-from swagger_ui import quart_api_doc
+from swagger_ui import api_doc
 
+import gruut
 from tts import (
     EspeakTTS,
     FestivalTTS,
     FliteTTS,
+    GlowSpeakTTS,
     LarynxTTS,
-    MaryTTSLocal,
-    MaryTTSRemote,
-    MozillaTTS,
+    MaryTTS,
     NanoTTS,
     TTSBase,
 )
@@ -45,11 +47,16 @@ _VOICES_DIR = _DIR / "voices"
 _LOGGER = logging.getLogger("opentts")
 _LOOP = asyncio.get_event_loop()
 
+WAV_AND_SAMPLE_RATE = typing.Tuple[bytes, int]
+
+
 # Language to default to in dropdown list
 _DEFAULT_LANGUAGE = "en"
 lang_path = _DIR / "LANGUAGE"
 if lang_path.is_file():
     _DEFAULT_LANGUAGE = lang_path.read_text().strip()
+
+_VOICE_ALIAS: typing.Dict[str, str] = {}
 
 # -----------------------------------------------------------------------------
 
@@ -60,6 +67,7 @@ parser.add_argument(
 parser.add_argument(
     "--port", type=int, default=5500, help="Port of HTTP server (default: 5500)"
 )
+parser.add_argument("--language", help="Override default language")
 
 parser.add_argument("--no-espeak", action="store_true", help="Don't use espeak")
 parser.add_argument("--no-flite", action="store_true", help="Don't use flite")
@@ -69,24 +77,21 @@ parser.add_argument(
 )
 parser.add_argument("--no-festival", action="store_true", help="Don't use festival")
 parser.add_argument("--no-nanotts", action="store_true", help="Don't use nanotts")
-parser.add_argument(
-    "--marytts-url", help="URL of MaryTTS server (e.g., http://localhost:59125)"
-)
-parser.add_argument(
-    "--mozillatts-url", help="URL of MozillaTTS server (e.g., http://localhost:5002)"
-)
-parser.add_argument(
-    "--marytts-like",
-    nargs=2,
-    action="append",
-    help="Name and URL of MaryTTS-like server",
-)
+parser.add_argument("--no-marytts", action="store_true", help="Don't use MaryTTS")
 parser.add_argument("--no-larynx", action="store_true", help="Don't use Larynx")
+parser.add_argument("--no-glow-speak", action="store_true", help="Don't use Glow-Speak")
 parser.add_argument(
     "--cache",
     nargs="?",
     const="",
     help="Cache WAV files in a provided or temporary directory",
+)
+parser.add_argument(
+    "--preferred-voice",
+    nargs=2,
+    metavar=("lang", "voice"),
+    action="append",
+    help="Preferred voice for a language with SSML",
 )
 parser.add_argument(
     "--debug", action="store_true", help="Print DEBUG messages to console"
@@ -127,6 +132,15 @@ else:
 
 _LOGGER.debug(args)
 
+if args.language:
+    _DEFAULT_LANGUAGE = args.language
+
+_LOGGER.debug("Default language: %s", _DEFAULT_LANGUAGE)
+
+if args.preferred_voice:
+    for pref_lang, pref_voice in args.preferred_voice:
+        _VOICE_ALIAS[pref_lang] = pref_voice
+
 # -----------------------------------------------------------------------------
 
 # Set up WAV cache
@@ -139,7 +153,8 @@ if args.cache is not None:
         _CACHE_DIR = Path(args.cache)
     else:
         # Temporary directory
-        _CACHE_TEMP_DIR = tempfile.TemporaryDirectory(prefix="larynx_")
+        # pylint: disable=consider-using-with
+        _CACHE_TEMP_DIR = tempfile.TemporaryDirectory(prefix="opentts_")
         _CACHE_DIR = Path(_CACHE_TEMP_DIR.name)
 
     _LOGGER.debug("Caching WAV files in %s", _CACHE_DIR)
@@ -157,11 +172,11 @@ def get_cache_key(text: str, voice: str, settings: str = "") -> str:
 _TTS: typing.Dict[str, TTSBase] = {}
 
 # espeak
-if not args.no_espeak:
+if (not args.no_espeak) and shutil.which("espeak-ng"):
     _TTS["espeak"] = EspeakTTS()
 
 # flite
-if not args.no_flite:
+if (not args.no_flite) and shutil.which("flite"):
     flite_voices_dir = _VOICES_DIR / "flite"
     if args.flite_voices_dir:
         flite_voices_dir = Path(args.flite_voices_dir)
@@ -169,39 +184,40 @@ if not args.no_flite:
     _TTS["flite"] = FliteTTS(voice_dir=flite_voices_dir)
 
 # festival
-if not args.no_festival:
+if (not args.no_festival) and shutil.which("festival"):
     _TTS["festival"] = FestivalTTS()
 
 # nanotts
-if not args.no_nanotts:
+if (not args.no_nanotts) and shutil.which("nanotts"):
     _TTS["nanotts"] = NanoTTS()
 
 # MaryTTS
-if args.marytts_url:
-    if not args.marytts_url.endswith("/"):
-        args.marytts_url += "/"
-
-    _TTS["marytts"] = MaryTTSRemote(url=args.marytts_url)
-else:
-    _TTS["marytts"] = MaryTTSLocal(base_dir=(_VOICES_DIR / "marytts"))
-
-# MozillaTTS
-if args.mozillatts_url:
-    if not args.mozillatts_url.endswith("/"):
-        args.mozillatts_url += "/"
-
-    _TTS["mozillatts"] = MozillaTTS(url=args.mozillatts_url)
-
-if args.marytts_like:
-    for tts_name_, tts_url_ in args.marytts_like:
-        if not tts_url_.endswith("/"):
-            tts_url_ += "/"
-
-        _TTS[tts_name_] = MaryTTSRemote(url=tts_url_)
+if (not args.no_marytts) and shutil.which("java"):
+    _TTS["marytts"] = MaryTTS(base_dir=(_VOICES_DIR / "marytts"))
 
 # Larynx
 if not args.no_larynx:
-    _TTS["larynx"] = LarynxTTS(models_dir=(_VOICES_DIR / "larynx"))
+    try:
+        import larynx  # noqa: F401
+
+        larynx_available = True
+    except Exception:
+        larynx_available = False
+
+    if larynx_available:
+        _TTS["larynx"] = LarynxTTS(models_dir=(_VOICES_DIR / "larynx"))
+
+# Glow-Speak
+if not args.no_glow_speak:
+    try:
+        import glow_speak  # noqa: F401
+
+        glow_speak_available = True
+    except Exception:
+        glow_speak_available = False
+
+    if glow_speak_available:
+        _TTS["glow-speak"] = GlowSpeakTTS(models_dir=(_VOICES_DIR / "glow-speak"))
 
 _LOGGER.debug("Loaded TTS systems: %s", ", ".join(_TTS.keys()))
 
@@ -217,22 +233,18 @@ app = quart_cors.cors(app)
 
 # -----------------------------------------------------------------------------
 
-# quality level -> vocoder name
-_LARYNX_QUALITY = {
-    "high": "hifi_gan:universal_large",
-    "medium": "hifi_gan:vctk_medium",
-    "low": "hifi_gan:vctk_small",
-}
-
 
 async def text_to_wav(
     text: str,
     voice: str,
+    lang: str = "en",
     vocoder: typing.Optional[str] = None,
     denoiser_strength: typing.Optional[float] = None,
     noise_scale: typing.Optional[float] = None,
     length_scale: typing.Optional[float] = None,
     use_cache: bool = True,
+    ssml: bool = False,
+    ssml_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
 ) -> bytes:
     """Runs TTS for each line and accumulates all audio into a single WAV."""
     assert voice, "No voice provided"
@@ -244,7 +256,7 @@ async def text_to_wav(
 
     if use_cache and (_CACHE_DIR is not None):
         # Ensure unique cache id for different denoiser values
-        settings_str = f"denoiser_strength={denoiser_strength}"
+        settings_str = f"denoiser_strength={denoiser_strength};noise_scale={noise_scale};length_scale={length_scale};ssml={ssml}"
         cache_key = get_cache_key(text=text, voice=voice, settings=settings_str)
         cache_path = _CACHE_DIR / f"{cache_key}.wav"
         if cache_path.is_file():
@@ -260,67 +272,231 @@ async def text_to_wav(
     # Synthesis
     # -------------------------------------------------------------------------
 
-    tts_name, voice_id = voice.split(":")
-    tts = _TTS.get(tts_name.lower())
-    assert tts, f"No TTS named {tts_name}"
-
-    # Synthesize each line separately.
-    # Accumulate into a single WAV file.
+    # Synthesize text and accumulate into a single WAV file.
     _LOGGER.info("Synthesizing with %s (%s char(s))...", voice, len(text))
     start_time = time.time()
-    wav_settings_set = False
 
-    with io.BytesIO() as wav_io:
-        wav_file: wave.Wave_write = wave.open(wav_io, "wb")
-        for line_index, line in enumerate(text.strip().splitlines()):
-            _LOGGER.debug(
-                "Synthesizing line %s (%s char(s))", line_index + 1, len(line)
-            )
-            line_wav_bytes = await tts.say(
-                line,
-                voice_id,
-                vocoder=vocoder,
-                denoiser_strength=denoiser_strength,
-                noise_scale=noise_scale,
-                length_scale=length_scale,
-            )
-            assert line_wav_bytes, f"No WAV audio from line: {line}"
-            _LOGGER.debug(
-                "Got %s WAV byte(s) for line %s", len(line_wav_bytes), line_index + 1
-            )
+    if ssml:
+        wavs_gen = ssml_to_wavs(
+            ssml_text=text,
+            default_voice=voice,
+            default_lang=lang,
+            ssml_args=ssml_args,
+            # Larynx settings
+            vocoder=vocoder,
+            denoiser_strength=denoiser_strength,
+            noise_scale=noise_scale,
+            length_scale=length_scale,
+        )
+    else:
+        wavs_gen = text_to_wavs(
+            text=text,
+            voice=voice,
+            # Larynx settings
+            vocoder=vocoder,
+            denoiser_strength=denoiser_strength,
+            noise_scale=noise_scale,
+            length_scale=length_scale,
+        )
 
-            # Open up and add to main WAV
-            with io.BytesIO(line_wav_bytes) as line_wav_io:
-                with wave.open(line_wav_io, "rb") as line_wav_file:
-                    if not wav_settings_set:
-                        # Copy settings from first WAV
-                        wav_file.setframerate(line_wav_file.getframerate())
-                        wav_file.setsampwidth(line_wav_file.getsampwidth())
-                        wav_file.setnchannels(line_wav_file.getnchannels())
-                        wav_settings_set = True
+    wavs = [result async for result in wavs_gen]
+    assert wavs, "No audio returned from synthesis"
 
-                    wav_file.writeframes(
-                        line_wav_file.readframes(line_wav_file.getnframes())
-                    )
+    # Final output WAV will use the maximum sample rate
+    sample_rates = set(sample_rate for (_wav, sample_rate) in wavs)
+    final_sample_rate = max(sample_rates)
+    final_sample_width = 2  # bytes (16-bit)
+    final_n_channels = 1  # mono
 
-        # All lines combined
-        wav_file.close()
-        wav_bytes = wav_io.getvalue()
+    with io.BytesIO() as final_wav_io:
+        final_wav_file: wave.Wave_write = wave.open(final_wav_io, "wb")
+        with final_wav_file:
+            final_wav_file.setframerate(final_sample_rate)
+            final_wav_file.setsampwidth(final_sample_width)
+            final_wav_file.setnchannels(final_n_channels)
+
+            # Copy audio from each syntheiszed WAV to the final output.
+            # If rate/width/channels do not match, resample with sox.
+            for synth_wav_bytes, _synth_sample_rate in wavs:
+                with io.BytesIO(synth_wav_bytes) as synth_wav_io:
+                    synth_wav_file: wave.Wave_read = wave.open(synth_wav_io, "rb")
+
+                    # Check settings
+                    if (
+                        (synth_wav_file.getframerate() != final_sample_rate)
+                        or (synth_wav_file.getsampwidth() != final_sample_width)
+                        or (synth_wav_file.getnchannels() != final_n_channels)
+                    ):
+                        # Upsample with sox
+                        sox_cmd = [
+                            "sox",
+                            "-t",
+                            "wav",
+                            "-",
+                            "-t",
+                            "raw",
+                            "-r",
+                            str(final_sample_rate),
+                            "-b",
+                            str(final_sample_width * 8),  # bits
+                            "-c",
+                            str(final_n_channels),
+                            "-",
+                        ]
+                        _LOGGER.debug(sox_cmd)
+                        proc = await asyncio.create_subprocess_exec(
+                            *sox_cmd,
+                            stdin=asyncio.subprocess.PIPE,
+                            stdout=asyncio.subprocess.PIPE,
+                        )
+                        resampled_raw_bytes, _ = await proc.communicate(
+                            input=synth_wav_bytes
+                        )
+                        final_wav_file.writeframes(resampled_raw_bytes)
+                    else:
+                        # Settings match, can write frames directly
+                        final_wav_file.writeframes(
+                            synth_wav_file.readframes(synth_wav_file.getnframes())
+                        )
+
+        final_wav_bytes = final_wav_io.getvalue()
 
     end_time = time.time()
     _LOGGER.debug(
-        "Synthesized %s byte(s) in %s second(s)", len(wav_bytes), end_time - start_time
+        "Synthesized %s byte(s) in %s second(s)",
+        len(final_wav_bytes),
+        end_time - start_time,
     )
 
-    if wav_bytes and (cache_path is not None):
+    if final_wav_bytes and (cache_path is not None):
         try:
             _LOGGER.debug("Writing to cache: %s", cache_path)
-            cache_path.write_bytes(wav_bytes)
+            cache_path.write_bytes(final_wav_bytes)
         except Exception:
             # Continue if a cache write fails
             _LOGGER.exception("cache save")
 
-    return wav_bytes
+    return final_wav_bytes
+
+
+async def text_to_wavs(
+    text: str, voice: str, **say_args
+) -> typing.AsyncIterable[WAV_AND_SAMPLE_RATE]:
+    tts_name, voice_id = voice.split(":")
+    tts = _TTS.get(tts_name.lower())
+    assert tts, f"No TTS named {tts_name}"
+
+    # Process by line with single TTS
+    for line_index, line in enumerate(text.strip().splitlines()):
+        _LOGGER.debug("Synthesizing line %s (%s char(s))", line_index + 1, len(line))
+        line_wav_bytes = await tts.say(line, voice_id, **say_args)
+        assert line_wav_bytes, f"No WAV audio from line: {line}"
+        _LOGGER.debug(
+            "Got %s WAV byte(s) for line %s", len(line_wav_bytes), line_index + 1,
+        )
+
+        with io.BytesIO(line_wav_bytes) as line_wav_io:
+            line_wav_file: wave.Wave_read = wave.open(line_wav_io, "rb")
+            with line_wav_file:
+                yield (line_wav_bytes, line_wav_file.getframerate())
+
+
+async def ssml_to_wavs(
+    ssml_text: str,
+    default_lang: str,
+    default_voice: str,
+    ssml_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
+    **say_args,
+) -> typing.AsyncIterable[WAV_AND_SAMPLE_RATE]:
+    if ssml_args is None:
+        ssml_args = {}
+
+    for sent_index, sentence in enumerate(
+        gruut.sentences(
+            ssml_text,
+            lang=default_lang,
+            ssml=True,
+            explicit_lang=False,
+            phonemes=False,
+            pos=False,
+            **ssml_args,
+        )
+    ):
+        sent_voice = default_voice
+        if sentence.voice:
+            sent_voice = sentence.voice
+        elif sentence.lang and (sentence.lang != default_lang):
+            # Look up voice for language or fall back to eSpeak
+            sent_voice = _VOICE_ALIAS.get(sentence.lang, f"espeak:{sentence.lang}")
+
+        assert ":" in sent_voice, f"Invalid voice format: {sent_voice}"
+        tts_name, voice_id = sent_voice.split(":")
+        tts = _TTS.get(tts_name.lower())
+        assert tts, f"No TTS named {tts_name}"
+
+        sent_text = sentence.text_with_ws
+
+        _LOGGER.debug(
+            "Synthesizing sentence %s with voice %s: %s",
+            sent_index + 1,
+            sent_voice,
+            sent_text,
+        )
+
+        sent_wav_bytes = await tts.say(sent_text, voice_id, **say_args)
+        assert sent_wav_bytes, f"No WAV audio from sentence: {sent_text}"
+        _LOGGER.debug(
+            "Got %s WAV byte(s) for line %s", len(sent_wav_bytes), sent_index + 1,
+        )
+
+        # Add WAV bytes and sample rate to list.
+        # We will resample everything and append audio at the end.
+        with io.BytesIO(sent_wav_bytes) as sent_wav_io:
+            sent_wav_file: wave.Wave_read = wave.open(sent_wav_io, "rb")
+            with sent_wav_file:
+                sample_rate = sent_wav_file.getframerate()
+                sample_width = sent_wav_file.getsampwidth()
+                n_channels = sent_wav_file.getnchannels()
+
+                # Add pauses from SSML <break> tags
+                if sentence.pause_before_ms > 0:
+                    pause_before_sec = sentence.pause_before_ms / 1000
+                    yield (
+                        make_silence_wav(
+                            pause_before_sec, sample_rate, sample_width, n_channels,
+                        ),
+                        sample_rate,
+                    )
+
+                yield (sent_wav_bytes, sample_rate)
+
+                if sentence.pause_after_ms > 0:
+                    pause_after_sec = sentence.pause_after_ms / 1000
+                    yield (
+                        make_silence_wav(
+                            pause_after_sec, sample_rate, sample_width, n_channels,
+                        ),
+                        sample_rate,
+                    )
+
+
+def make_silence_wav(
+    seconds: float, sample_rate: int, sample_width: int, num_channels: int
+) -> bytes:
+    """Create a WAV file with silence"""
+    with io.BytesIO() as wav_io:
+        wav_file: wave.Wave_write = wave.open(wav_io, "wb")
+        with wav_file:
+            wav_file.setframerate(sample_rate)
+            wav_file.setsampwidth(sample_width)
+            wav_file.setnchannels(num_channels)
+
+            num_zeros = int(
+                math.ceil(seconds * sample_rate * sample_width * num_channels)
+            )
+            wav_file.writeframes(bytes(num_zeros))
+
+        return wav_io.getvalue()
 
 
 # -----------------------------------------------------------------------------
@@ -382,24 +558,31 @@ async def app_languages() -> Response:
     return jsonify(list(languages))
 
 
+def convert_bool(bool_str: str) -> bool:
+    """Convert HTML input string to boolean"""
+    return bool_str.strip().lower() in {"true", "yes", "on", "1", "enable"}
+
+
 @app.route("/api/tts", methods=["GET", "POST"])
 async def app_say() -> Response:
     """Speak text to WAV."""
+    lang = request.args.get("lang", "en")
+
     voice = request.args.get("voice", "")
     assert voice, "No voice provided"
 
     # cache=false or cache=0 disables WAV cache
-    use_cache = request.args.get("cache", "").strip().lower() not in {"false", "0"}
+    use_cache = convert_bool(request.args.get("cache", "false"))
 
     # Text can come from POST body or GET ?text arg
     if request.method == "POST":
         text = (await request.data).decode()
     else:
-        text = request.args.get("text")
+        text = request.args.get("text", "")
 
     assert text, "No text provided"
 
-    vocoder = request.args.get("vocoder", _LARYNX_QUALITY.get(args.larynx_quality))
+    vocoder = request.args.get("vocoder", args.larynx_quality)
 
     # Denoiser strength
     denoiser_strength = request.args.get(
@@ -417,14 +600,29 @@ async def app_say() -> Response:
     if length_scale is not None:
         length_scale = float(length_scale)
 
+    # SSML settings
+    ssml = convert_bool(request.args.get("ssml", "false"))
+    ssml_numbers = convert_bool(request.args.get("ssmlNumbers", "false"))
+    ssml_dates = convert_bool(request.args.get("ssmlDates", "false"))
+    ssml_currency = convert_bool(request.args.get("ssmlCurrency", "false"))
+
+    ssml_args = {
+        "verbalize_numbers": ssml_numbers,
+        "verbalize_dates": ssml_dates,
+        "verbalize_currency": ssml_currency,
+    }
+
     wav_bytes = await text_to_wav(
-        text,
-        voice,
+        text=text,
+        voice=voice,
+        lang=lang,
         vocoder=vocoder,
         denoiser_strength=denoiser_strength,
         noise_scale=noise_scale,
         length_scale=length_scale,
         use_cache=use_cache,
+        ssml=ssml,
+        ssml_args=ssml_args,
     )
 
     return Response(wav_bytes, mimetype="audio/wav")
@@ -445,7 +643,7 @@ async def api_process():
         voice = request.args.get("VOICE", "")
 
     # <VOICE>;<VOCODER>
-    vocoder: typing.Optional[str] = _LARYNX_QUALITY.get(args.larynx_quality)
+    vocoder: typing.Optional[str] = args.larynx_quality
     if ";" in voice:
         voice, vocoder = voice.split(";", maxsplit=1)
 
@@ -480,13 +678,21 @@ async def api_voices():
 @app.route("/")
 async def app_index():
     """Test page."""
-    return await render_template("index.html", default_language=_DEFAULT_LANGUAGE)
+    return await render_template(
+        "index.html", default_language=_DEFAULT_LANGUAGE, cache=args.cache
+    )
 
 
 @app.route("/css/<path:filename>", methods=["GET"])
 async def css(filename) -> Response:
     """CSS static endpoint."""
     return await send_from_directory("css", filename)
+
+
+@app.route("/js/<path:filename>", methods=["GET"])
+async def js(filename) -> Response:
+    """Javascript static endpoint."""
+    return await send_from_directory("js", filename)
 
 
 @app.route("/img/<path:filename>", methods=["GET"])
@@ -496,7 +702,7 @@ async def img(filename) -> Response:
 
 
 # Swagger UI
-quart_api_doc(app, config_path="swagger.yaml", url_prefix="/openapi", title="OpenTTS")
+api_doc(app, config_path="swagger.yaml", url_prefix="/openapi", title="OpenTTS")
 
 
 @app.errorhandler(Exception)

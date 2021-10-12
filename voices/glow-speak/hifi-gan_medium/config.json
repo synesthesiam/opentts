@@ -1,0 +1,61 @@
+{
+    "seed": 1234,
+    "epochs": 10000,
+    "learning_rate": 0.0002,
+    "adam_b1": 0.8,
+    "adam_b2": 0.99,
+    "lr_decay": 0.999,
+    "batch_size": 32,
+    "fp16_run": false,
+    "audio": {
+        "filter_length": 1024,
+        "hop_length": 256,
+        "win_length": 1024,
+        "segment_size": 8192,
+        "num_mels": 80,
+        "num_freq": 1025,
+        "n_fft": 1024,
+        "sampling_rate": 22050,
+        "sample_bytes": 2,
+        "channels": 1,
+        "mel_fmin": 0.0,
+        "mel_fmax": 8000.0,
+        "mel_fmax_loss": null,
+        "normalized": true
+    },
+    "model": {
+        "resblock": "2",
+        "upsample_rates": [
+            8,
+            8,
+            4
+        ],
+        "upsample_kernel_sizes": [
+            16,
+            16,
+            8
+        ],
+        "upsample_initial_channel": 256,
+        "resblock_kernel_sizes": [
+            3,
+            5,
+            7
+        ],
+        "resblock_dilation_sizes": [
+            [
+                1,
+                2
+            ],
+            [
+                2,
+                6
+            ],
+            [
+                3,
+                12
+            ]
+        ]
+    },
+    "version": 1,
+    "git_commit": "7a595ef"
+}

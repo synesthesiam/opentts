@@ -3,9 +3,10 @@ __pycache__/
 .mypy_cache/
 
 /download/
-/voices/flite/*indic*
 /voices/larynx/
-/voices/marytts/
 /log/
-/gruut/
+
 .dockerignore
+.dockerargs
+python_packages
+packages

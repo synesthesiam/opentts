@@ -10,7 +10,7 @@ if [[ -d "${venv}" ]]; then
     source "${venv}/bin/activate"
 fi
 
-python_files=("${src_dir}/"*.py)
+python_files=("${src_dir}/"*.py "${src_dir}/glow_speak" "${src_dir}/larynx")
 
 # -----------------------------------------------------------------------------
 

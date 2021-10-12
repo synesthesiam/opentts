@@ -14,6 +14,40 @@
          body {
              padding-top: 1rem;
          }
+
+         .dropdown .btn:hover {
+             color: white;
+             background: #0069d9;
+         }
+
+        .checkbox-menu li label {
+            display: block;
+            padding: 3px 10px;
+            clear: both;
+            font-weight: normal;
+            line-height: 1.42857143;
+            color: #333;
+            white-space: nowrap;
+            margin:0;
+        }
+        .checkbox-menu li input {
+            margin: 0px 5px;
+            top: 2px;
+            position: relative;
+        }
+
+
+        .checkbox-menu li label:hover,
+        .checkbox-menu li label:focus {
+            background-color: #0069d9;
+            color: white;
+        }
+
+        .checkbox-menu li.active label:hover,
+        .checkbox-menu li.active label:focus {
+            background-color: #0069d9;
+            color: white;
+        }        
         </style>
     </head>
     <body class="bg-dark text-light">
@@ -31,7 +65,7 @@
             </div>
             <div class="row mt-3">
                 <div class="col">
-                    <textarea id="text" placeholder="Type here..." class="form-control" rows="3" name="text"></textarea>
+                    <textarea id="text" placeholder="Type here..." class="form-control" rows="8" name="text"></textarea>
                 </div>
                 <div class="col-auto">
                     <button id="speak-button" name="speak" class="btn btn-lg btn-primary">Speak</button>
@@ -46,12 +80,39 @@
                     <select id="voice-list" name="voices" onchange="changeVoice()">
                     </select>
                 </div>
+                <div class="col-auto">
+                  <input type="checkbox" id="ssml">
+                  <label class="ml-1" for="ssml">SSML</label>
+                </div>
+                <div class="col-auto" id="ssml-settings" style="display:none;">
+                  <div class="dropdown">
+                    <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                      Replace
+                    </button>
+                    <ul class="dropdown-menu checkbox-menu allow-focus">
+                      <li >
+                        <label>
+                          <input type="checkbox" id="ssml-numbers"> Numbers
+                        </label>
+                      </li>
+                      <li >
+                        <label>
+                          <input type="checkbox" id="ssml-dates"> Dates
+                        </label>
+                      </li>
+                      <li >
+                        <label>
+                          <input type="checkbox" id="ssml-currency"> Currency
+                        </label>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
                 <div class="col-auto" id="larynx-settings">
                     <select id="vocoder-list" name="vocoders">
-                        <option value="waveglow:wn_256">Best Quality</option>
-                        <option value="hifi_gan:universal_large" selected>High Quality</option>
-                        <option value="hifi_gan:vctk_medium">Medium Quality</option>
-                        <option value="hifi_gan:vctk_small">Low Quality</option>
+                        <option value="high" selected>High Quality</option>
+                        <option value="medium">Medium Quality</option>
+                        <option value="low">Low Quality</option>
                     </select>
                     <label for="denoiser-strength" class="ml-2">Denoiser:</label>
                     <input type="number" id="denoiser-strength" name="denoiser" min="0" max="1" step="0.001" value="0.001">
@@ -61,10 +122,12 @@
                 <div class="col-auto">
                     <strong>Voice id:</strong> <span id="voice-id"></span>
                 </div>
+                {% if cache: %}
                 <div class="ml-3 col-auto">
                     <input id="use-cache" type="checkbox" checked>
                     <label for="use-cache">Cache</label>
                 </div>
+                {% endif %}
             </div>
             <div class="row">
                 <div class="col">
@@ -74,126 +137,169 @@
             </div>
         </div>
 
+        <script type="text/javascript" src="js/jquery-3.6.0.min.js"></script>
+        <script type="text/javascript" src="js/popper.min.js"></script>
+        <script type="text/javascript" src="js/bootstrap.min.js"></script>
+
         <script>
-         function q(selector) {return document.querySelector(selector)}
-         q('#text').focus()
-         function do_tts(e) {
-             var text = q('#text').value
-             if (text) {
-                 q('#message').textContent = 'Synthesizing...'
-                 q('#speak-button').disabled = true
-                 q('#audio').hidden = true
-                 synthesize(text)
-             }
-             e.preventDefault()
-             return false
-         }
-         q('#speak-button').addEventListener('click', do_tts)
-         async function synthesize(text) {
-             var voiceList = q('#voice-list')
-             var voice = voiceList.options[voiceList.selectedIndex].value
+          function q(selector) {return document.querySelector(selector)}
+          q('#text').focus()
+          function do_tts(e) {
+              var text = q('#text').value
+              if (text) {
+                  q('#message').textContent = 'Synthesizing...'
+                  q('#speak-button').disabled = true
+                  q('#audio').hidden = true
+                  synthesize(text)
+              }
+              e.preventDefault()
+              return false
+          }
+          q('#speak-button').addEventListener('click', do_tts)
+          async function synthesize(text) {
+              var voiceList = q('#voice-list')
+              var voice = voiceList.options[voiceList.selectedIndex].value
 
-             var vocoderList = q('#vocoder-list')
-             var vocoder = vocoderList.options[vocoderList.selectedIndex].value || ''
-             var denoiserStrength = q('#denoiser-strength').value
-             var useCache = q('#use-cache').checked ? 'true' : 'false'
+              var languageList = q('#language-list')
+              var lang = languageList.options[languageList.selectedIndex].value || ''
 
-             var startTime = performance.now()
+              var vocoderList = q('#vocoder-list')
+              var vocoder = vocoderList.options[vocoderList.selectedIndex].value || ''
+              var denoiserStrength = q('#denoiser-strength').value
 
-             res = await fetch(
-                 '/api/tts?voice=' + encodeURIComponent(voice) +
-                 '&vocoder=' + vocoder +
-                 '&denoiserStrength=' + denoiserStrength +
-                 '&text=' + encodeURIComponent(text) +
-                 '&cache=' + encodeURIComponent(useCache),
-                 {cache: 'no-cache'}
-             )
+              var useCache = 'false';
+              if (q('#use-cache')) {
+                  useCache = q('#use-cache').checked ? 'true' : 'false'
+              }
 
-             if (res.ok) {
-                 blob = await res.blob()
-                 var elapsedTime = performance.now() - startTime
+              var ssml = q('#ssml').checked ? 'true' : 'false'
+              var ssmlNumbers = q('#ssml-numbers').checked ? 'true' : 'false'
+              var ssmlDates = q('#ssml-dates').checked ? 'true' : 'false'
+              var ssmlCurrency = q('#ssml-currency').checked ? 'true' : 'false'
 
-                 q('#message').textContent = (elapsedTime / 1000) + ' second(s)'
-                 q('#speak-button').disabled = false
-                 q('#audio').src = URL.createObjectURL(blob)
-                 q('#audio').hidden = false
-             } else {
-                 message = await res.text()
-                 q('#message').textContent = message
-                 q('#speak-button').disabled = false
-             }
-         }
+              var startTime = performance.now()
 
-         function changeLanguage() {
-             // Load voices for language
-             var languageList = q('#language-list')
-             var language = languageList.options[languageList.selectedIndex].value
-             loadVoices(language)
-         }
+              res = await fetch(
+                  '/api/tts?voice=' + encodeURIComponent(voice) +
+                      '&lang=' + encodeURIComponent(lang) +
+                      '&vocoder=' + encodeURIComponent(vocoder) +
+                      '&denoiserStrength=' + encodeURIComponent(denoiserStrength) +
+                      '&text=' + encodeURIComponent(text) +
+                      '&ssml=' + encodeURIComponent(ssml) +
+                      '&ssmlNumbers=' + encodeURIComponent(ssmlNumbers) +
+                      '&ssmlDates=' + encodeURIComponent(ssmlDates) +
+                      '&ssmlCurrency=' + encodeURIComponent(ssmlCurrency) +
+                      '&cache=' + encodeURIComponent(useCache),
+                  {cache: 'no-cache'}
+              )
 
-         function changeVoice() {
-             var voiceList = q('#voice-list')
-             var voice = voiceList.options[voiceList.selectedIndex].value
-             q('#voice-id').innerHTML = voice
+              if (res.ok) {
+                  blob = await res.blob()
+                  var elapsedTime = performance.now() - startTime
 
-             if (voice.startsWith("larynx:")) {
-                 q('#larynx-settings').style.visibility = "visible";
-             } else {
-                 q('#larynx-settings').style.visibility = "hidden";
-             }
-         }
+                  q('#message').textContent = (elapsedTime / 1000) + ' second(s)'
+                  q('#speak-button').disabled = false
+                  q('#audio').src = URL.createObjectURL(blob)
+                  q('#audio').hidden = false
+              } else {
+                  message = await res.text()
+                  q('#message').textContent = message
+                  q('#speak-button').disabled = false
+              }
+          }
 
-         function loadVoices(language) {
-             // Remove previous voices
-             var voiceList = q('#voice-list')
-             for (var i = voiceList.options.length - 1; i >= 0; i--) {
-                 voiceList.options[i].remove()
-             }
+          function changeLanguage() {
+              // Load voices for language
+              var languageList = q('#language-list')
+              var language = languageList.options[languageList.selectedIndex].value
+              loadVoices(language)
+          }
 
-             fetch('/api/voices?language=' + encodeURIComponent(language))
-                 .then(function(res) {
-                     if (!res.ok) throw Error(res.statusText)
-                     return res.json()
-                 }).then(function(voices) {
-                     Object.entries(voices).forEach(function(id_voice) {
-                         var id = id_voice[0]
-                         var voice = id_voice[1]
-                         var description = voice.tts_name + ': ' + voice.name + ' [' + voice.gender + '] (' + voice.locale + ')'
-                         voiceList.insertAdjacentHTML(
-                             'beforeend', '<option value="' + id + '">' + description + '</option>'
-                         )
-                     })
+          function changeVoice() {
+              var voiceList = q('#voice-list')
+              var voice = voiceList.options[voiceList.selectedIndex].value
+              q('#voice-id').innerHTML = voice
 
-                     changeVoice()
-                 }).catch(function(err) {
-                     q('#message').textContent = 'Error: ' + err.message
-                     q('#speak-button').disabled = false
-                 })
-         }
+              if (voice.startsWith("larynx:") || voice.startsWith("glow-speak:")) {
+                  q('#larynx-settings').style.visibility = "visible";
+              } else {
+                  q('#larynx-settings').style.visibility = "hidden";
+              }
+          }
 
-         window.addEventListener('load', function() {
-             var defaultLanguage = '{{ default_language }}'
+          function loadVoices(language) {
+              // Remove previous voices
+              var voiceList = q('#voice-list')
+              for (var i = voiceList.options.length - 1; i >= 0; i--) {
+                  voiceList.options[i].remove()
+              }
 
-             fetch('/api/languages')
-                 .then(function(res) {
-                     if (!res.ok) throw Error(res.statusText)
-                     return res.json()
-                 }).then(function(languages) {
-                     languages.sort()
-                     var languageList = q('#language-list')
-                     languages.forEach(function(language) {
-                         selected = (language == defaultLanguage) ? 'selected' : ''
-                         languageList.insertAdjacentHTML(
-                             'beforeend', '<option value="' + language + '" ' + selected + '>' + language + '</option>'
-                         )
-                     })
+              fetch('/api/voices?language=' + encodeURIComponent(language))
+                  .then(function(res) {
+                      if (!res.ok) throw Error(res.statusText)
+                      return res.json()
+                  }).then(function(voices) {
+                      Object.entries(voices).forEach(function(id_voice) {
+                          var id = id_voice[0]
+                          var voice = id_voice[1]
+                          var description = voice.tts_name + ': ' + voice.name + ' [' + voice.gender + '] (' + voice.locale + ')'
+                          voiceList.insertAdjacentHTML(
+                              'beforeend', '<option value="' + id + '">' + description + '</option>'
+                          )
+                      })
 
-                     loadVoices(defaultLanguage)
-                 }).catch(function(err) {
-                     q('#message').textContent = 'Error: ' + err.message
-                     q('#speak-button').disabled = false
-                 })
-         })
-        </script>
+                      changeVoice()
+                  }).catch(function(err) {
+                      q('#message').textContent = 'Error: ' + err.message
+                      q('#speak-button').disabled = false
+                  })
+          }
+
+          function toggleSSMLSettings() {
+              if (q("#ssml").checked) {
+                  $("#ssml-settings").show()
+              }
+              else {
+                  $("#ssml-settings").hide()
+              }
+          }
+
+          $("#ssml").on("change", toggleSSMLSettings)
+
+          window.addEventListener('load', function() {
+              var defaultLanguage = '{{ default_language }}'
+
+              fetch('/api/languages')
+                  .then(function(res) {
+                      if (!res.ok) throw Error(res.statusText)
+                      return res.json()
+                  }).then(function(languages) {
+                      languages.sort()
+                      var languageList = q('#language-list')
+                      languages.forEach(function(language) {
+                          selected = (language == defaultLanguage) ? 'selected' : ''
+                          languageList.insertAdjacentHTML(
+                              'beforeend', '<option value="' + language + '" ' + selected + '>' + language + '</option>'
+                          )
+                      })
+
+                      loadVoices(defaultLanguage)
+                  }).catch(function(err) {
+                      q('#message').textContent = 'Error: ' + err.message
+                      q('#speak-button').disabled = false
+                  })
+
+              toggleSSMLSettings()
+          })
+
+          $(".checkbox-menu").on("change", "input[type='checkbox']", function() {
+              $(this).closest("li").toggleClass("active", this.checked);
+          });
+
+          $(document).on('click', '.allow-focus', function (e) {
+              e.stopPropagation();
+          });
+
+          </script>
     </body>
 </html>

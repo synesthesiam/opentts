@@ -1,12 +1,12 @@
 openapi: "3.0.0"
 info:
   title: 'OpenTTS'
-  version: '1.0'
+  version: '2.1'
   description: 'Open Text to Speech API'
 schemes:
   - http
 servers:
-  - url: http://localhost:5000
+  - url: http://localhost:5500
     description: Local server
 paths:
   /api/tts:
@@ -29,10 +29,11 @@ paths:
             example: 'Welcome to the world of speech synthesis!'
         - in: query
           name: vocoder
-          description: 'Vocoder in the form type:name (Larynx only)'
+          description: 'Vocoder quality (Larynx only)'
           schema:
             type: string
-            example: 'hifi_gan:universal_large'
+            enum: [high, medium, low]
+            example: 'high'
         - in: query
           name: denoiserStrength
           description: 'Strength of vocoder denoiser (0-1, 0 is disabled, Larynx only)'

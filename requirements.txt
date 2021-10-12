@@ -1,7 +1,5 @@
-aiohttp==3.7.4
-hypercorn==0.10.1
-larynx~=0.3.0
-quart==0.11.3
-quart-cors==0.3.0
-swagger-ui-py==0.2.1
-transliterate==1.10.2
+gruut~=2.0.0
+hypercorn~=0.11.0
+quart~=0.15.0
+quart-cors~=0.5.0
+swagger-ui-py~=21.9.28

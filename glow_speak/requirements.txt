@@ -1,0 +1,3 @@
+espeak-phonemizer~=1.0.0
+onnxruntime>=1.6.0,<2.0
+phonemes2ids~=1.0.0

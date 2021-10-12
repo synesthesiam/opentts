@@ -7,16 +7,12 @@ import logging
 import platform
 import shlex
 import shutil
-import ssl
 import tempfile
 import typing
 from abc import ABCMeta
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urljoin
 from zipfile import ZipFile
-
-import aiohttp
 
 _LOGGER = logging.getLogger("opentts")
 
@@ -686,83 +682,7 @@ class NanoTTS(TTSBase):
 # -----------------------------------------------------------------------------
 
 
-class MaryTTSRemote(TTSBase):
-    """Wraps a remote MaryTTS server (http://mary.dfki.de)"""
-
-    def __init__(self, url="http://localhost:59125/"):
-        self.url = url
-        self.ssl_context = ssl.SSLContext()
-        self.session = None
-        self.voice_locales = {}
-
-    async def voices(self) -> VoicesIterable:
-        """Get list of available voices."""
-        if not self.session:
-            self.session = aiohttp.ClientSession()
-
-        voices_url = urljoin(self.url, "voices")
-        _LOGGER.debug(voices_url)
-
-        try:
-            async with self.session.get(voices_url, ssl=self.ssl_context) as response:
-                response.raise_for_status()
-                text = (await response.read()).decode()
-                for line in text.splitlines():
-                    line = line.strip()
-                    if line:
-                        parts = line.split()
-                        locale = parts[1].replace("_", "-")
-                        language = locale.split("-", maxsplit=1)[0]
-
-                        # Cache locale
-                        self.voice_locales[parts[0]] = locale
-
-                        yield Voice(
-                            id=parts[0],
-                            name=parts[0],
-                            gender=parts[2][0].upper(),
-                            locale=locale,
-                            language=language,
-                        )
-        except Exception:
-            _LOGGER.exception("marytts")
-
-    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
-        """Speak text as WAV."""
-        if not self.session:
-            self.session = aiohttp.ClientSession()
-
-        locale = self.voice_locales.get(voice_id)
-        if not locale:
-            async for voice in self.voices():
-                if voice.id == voice_id:
-                    locale = voice.locale.replace("-", "_")
-                    self.voice_locales[voice.id] = locale
-                    break
-
-        params = {
-            "INPUT_TYPE": "TEXT",
-            "OUTPUT_TYPE": "AUDIO",
-            "AUDIO": "WAVE",
-            "VOICE": voice_id,
-            "INPUT_TEXT": text,
-            "LOCALE": locale,
-        }
-
-        process_url = urljoin(self.url, "process")
-        _LOGGER.debug("%s %s", process_url, params)
-        async with self.session.get(
-            process_url, ssl=self.ssl_context, params=params
-        ) as response:
-            response.raise_for_status()
-            wav_bytes = await response.read()
-            return wav_bytes
-
-
-# -----------------------------------------------------------------------------
-
-
-class MaryTTSLocal(TTSBase):
+class MaryTTS(TTSBase):
     """Wraps a local MaryTTS installation (http://mary.dfki.de)"""
 
     def __init__(self, base_dir: typing.Union[str, Path]):
@@ -917,60 +837,12 @@ class MaryTTSLocal(TTSBase):
 # -----------------------------------------------------------------------------
 
 
-class MozillaTTS(TTSBase):
-    """Wraps Mozilla TTS (https://github.com/mozilla/TTS)"""
-
-    def __init__(self, url="http://localhost:5002/"):
-        self.url = url
-        self.ssl_context = ssl.SSLContext()
-        self.session = None
-        self.voice_locales = {}
-
-    async def voices(self) -> VoicesIterable:
-        """Get list of available voices."""
-        mozilla_voices = [
-            Voice(id="en-us", name="en-us", locale="en-us", language="en", gender="F")
-        ]
-
-        for voice in mozilla_voices:
-            yield voice
-
-    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
-        """Speak text as WAV."""
-        if not self.session:
-            self.session = aiohttp.ClientSession()
-
-        params = {"text": text}
-
-        tts_url = urljoin(self.url, "api/tts")
-        async with self.session.get(
-            tts_url, ssl=self.ssl_context, params=params
-        ) as response:
-            response.raise_for_status()
-            wav_bytes = await response.read()
-            return wav_bytes
-
-
-# -----------------------------------------------------------------------------
-
-
 class LarynxTTS(TTSBase):
     """Wraps Larynx TTS (https://github.com/rhasspy/larynx)"""
 
     def __init__(self, models_dir: typing.Union[str, Path], sample_rate: int = 22050):
-        import gruut
-        import larynx
-
         self.models_dir = Path(models_dir)
         self.sample_rate = sample_rate
-
-        # Onnx optimizations crash on armv7l for some reason
-        self.no_optimizations = platform.machine() == "armv7l"
-
-        self.gruut_langs: typing.Dict[str, gruut.Language] = {}
-        self.models: typing.Dict[str, larynx.constants.TextToSpeechModel] = {}
-        self.vocoders: typing.Dict[str, larynx.constants.VocoderModel] = {}
-        self.audio_settings: typing.Dict[str, larynx.audio.AudioSettings] = {}
 
         self.larynx_voices = {
             # de-de
@@ -1009,10 +881,31 @@ class LarynxTTS(TTSBase):
                 language="de",
                 gender="F",
             ),
+            "hokuspokus-glow_tts": Voice(
+                id="hokuspokus-glow_tts",
+                name="hokuspokus-glow_tts",
+                locale="de-de",
+                language="de",
+                gender="F",
+            ),
+            "kerstin-glow_tts": Voice(
+                id="kerstin-glow_tts",
+                name="kerstin-glow_tts",
+                locale="de-de",
+                language="de",
+                gender="F",
+            ),
             # en-us
             "blizzard_fls-glow_tts": Voice(
                 id="blizzard_fls-glow_tts",
                 name="blizzard_fls-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "blizzard_lessac-glow_tts": Voice(
+                id="blizzard_lessac-glow_tts",
+                name="blizzard_lessac-glow_tts",
                 locale="en-us",
                 language="en",
                 gender="F",
@@ -1136,13 +1029,19 @@ class LarynxTTS(TTSBase):
                 language="en",
                 gender="F",
             ),
+            "judy_bieber-glow_tts": Voice(
+                id="judy_bieber-glow_tts",
+                name="judy_bieber-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
             "kathleen-glow_tts": Voice(
                 id="kathleen-glow_tts",
                 name="kathleen-glow_tts",
                 locale="en-us",
                 language="en",
                 gender="F",
-                tag={"tts": {"noise_scale": 0.2, "length_scale": 0.8}},
             ),
             "ljspeech-glow_tts": Voice(
                 id="ljspeech-glow_tts",
@@ -1150,7 +1049,6 @@ class LarynxTTS(TTSBase):
                 locale="en-us",
                 language="en",
                 gender="F",
-                tag={"tts": {"noise_scale": 0.2, "length_scale": 0.8}},
             ),
             "mary_ann-glow_tts": Voice(
                 id="mary_ann-glow_tts",
@@ -1158,6 +1056,34 @@ class LarynxTTS(TTSBase):
                 locale="en-us",
                 language="en",
                 gender="F",
+            ),
+            "northern_english_male-glow_tts": Voice(
+                id="northern_english_male-glow_tts",
+                name="northern_english_male-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "scottish_english_male-glow_tts": Voice(
+                id="scottish_english_male-glow_tts",
+                name="scottish_english_male-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
+            ),
+            "southern_english_female-glow_tts": Voice(
+                id="southern_english_female-glow_tts",
+                name="southern_english_female-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "southern_english_male-glow_tts": Voice(
+                id="southern_english_male-glow_tts",
+                name="southern_english_male-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="M",
             ),
             # es-es
             "carlfm-glow_tts": Voice(
@@ -1218,7 +1144,6 @@ class LarynxTTS(TTSBase):
                 locale="nl",
                 language="nl",
                 gender="M",
-                tag={"tts": {"noise_scale": 0.2}},
             ),
             "flemishguy-glow_tts": Voice(
                 id="flemishguy-glow_tts",
@@ -1226,7 +1151,6 @@ class LarynxTTS(TTSBase):
                 locale="nl",
                 language="nl",
                 gender="M",
-                tag={"tts": {"length_scale": 0.8}},
             ),
             "bart_de_leeuw-glow_tts": Voice(
                 id="bart_de_leeuw-glow_tts",
@@ -1235,6 +1159,13 @@ class LarynxTTS(TTSBase):
                 language="nl",
                 gender="M",
             ),
+            "nathalie-glow_tts": Voice(
+                id="nathalie-glow_tts",
+                name="nathalie-glow_tts",
+                locale="nl",
+                language="nl",
+                gender="F",
+            ),
             # ru-ru
             "nikolaev-glow_tts": Voice(
                 id="nikolaev-glow_tts",
@@ -1242,7 +1173,6 @@ class LarynxTTS(TTSBase):
                 locale="ru-ru",
                 language="ru",
                 gender="M",
-                tag={"tts": {"noise_scale": 0.2}},
             ),
             "hajdurova-glow_tts": Voice(
                 id="hajdurova-glow_tts",
@@ -1265,7 +1195,14 @@ class LarynxTTS(TTSBase):
                 locale="sv-se",
                 language="sv",
                 gender="M",
-                tag={"tts": {"noise_scale": 0.2, "length_scale": 0.8}},
+            ),
+            # sw
+            "biblia_takatifu-glow_tts": Voice(
+                id="biblia_takatifu-glow_tts",
+                name="biblia_takatifu-glow_tts",
+                locale="sw",
+                language="sw",
+                gender="M",
             ),
         }
 
@@ -1278,81 +1215,26 @@ class LarynxTTS(TTSBase):
 
     async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
         """Speak text as WAV."""
-        vocoder: typing.Optional[str] = kwargs.get("vocoder")
         denoiser_strength: typing.Optional[float] = kwargs.get("denoiser_strength")
         noise_scale: typing.Optional[float] = kwargs.get("noise_scale")
         length_scale: typing.Optional[float] = kwargs.get("length_scale")
-
-        voice = self.larynx_voices[voice_id]
-
-        # Load lexicon, etc. for voice language (cache)
-        import gruut
-
-        gruut_lang = self.gruut_langs.get(voice.locale)
-        if not gruut_lang:
-            data_dirs = gruut.Language.get_data_dirs() + [self.models_dir / "gruut"]
-            gruut_lang = gruut.Language.load(language=voice.locale, data_dirs=data_dirs)
-
-            assert gruut_lang, f"No support for language {voice.locale} in gruut"
-            self.gruut_langs[voice.locale] = gruut_lang
-
-        # ---------------------------------------------------------------------
-
-        from larynx import (
-            AudioSettings,
-            load_tts_model,
-            load_vocoder_model,
-            text_to_speech,
-        )
-
-        # Load TTS model
-        tts_model = self.models.get(voice_id)
-        audio_settings: typing.Optional[AudioSettings] = None
-        if not tts_model:
-            model_path = self.models_dir / voice.locale / voice_id
-            model_type = voice_id.split("-")[-1]  # <name>-<model_type>""
-            tts_model = load_tts_model(
-                model_type,
-                model_path=model_path,
-                no_optimizations=self.no_optimizations,
-            )
-            self.models[voice_id] = tts_model
-
-            # Load audio settings
-            config_path = self.models_dir / voice.locale / voice_id / "config.json"
-            if config_path.is_file():
-                with open(config_path, "r") as config_file:
-                    tts_config = json.load(config_file)
-                    audio_settings = AudioSettings(**tts_config["audio"])
-                    self.audio_settings[voice_id] = audio_settings
-
-        audio_settings = self.audio_settings.get(voice_id)
-        if audio_settings is None:
-            # Use default settings
-            audio_settings = AudioSettings()
-            self.audio_settings[voice_id] = audio_settings
-
-        assert audio_settings is not None
-
-        # Load vocoder model
-        vocoder = vocoder or "hifi_gan:universal_large"
-        vocoder_model = self.vocoders.get(vocoder)
-        if not vocoder_model:
-            vocoder_type, vocoder_name = vocoder.split(":")
-            vocoder_path = self.models_dir / vocoder_type / vocoder_name
-            vocoder_model = load_vocoder_model(
-                vocoder_type,
-                model_path=vocoder_path,
-                no_optimizations=self.no_optimizations,
-            )
-            self.vocoders[vocoder] = vocoder_model
+        tts_settings: typing.Optional[typing.Dict[str, typing.Any]] = None
+        vocoder_settings: typing.Optional[typing.Dict[str, typing.Any]] = None
+        vocoder_quality: str = kwargs.get("vocoder", "high")
 
         # ---------------------------------------------------------------------
 
         # Run text to speech
+        import numpy as np
+
+        from larynx import text_to_speech
         from larynx.wavfile import write as wav_write
 
-        tts_settings = voice.tag.get("tts") if voice.tag else None
+        voice = self.larynx_voices.get(voice_id)
+
+        if voice is not None:
+            tts_settings = voice.tag.get("tts") if voice.tag else None
+            vocoder_settings = voice.tag.get("vocoder") if voice.tag else None
 
         if noise_scale is not None:
             # Override noise scale (voice volatility)
@@ -1363,8 +1245,6 @@ class LarynxTTS(TTSBase):
             # Override length scale (< 1 is faster)
             tts_settings = tts_settings or {}
             tts_settings["length_scale"] = length_scale
-
-        vocoder_settings = voice.tag.get("vocoder") if voice.tag else None
 
         if denoiser_strength is not None:
             # Override denoiser strength
@@ -1379,26 +1259,331 @@ class LarynxTTS(TTSBase):
 
         # Run asynchronously in executor
         loop = asyncio.get_running_loop()
-        text_and_audios = await loop.run_in_executor(
+        results = await loop.run_in_executor(
             None,
             functools.partial(
                 text_to_speech,
                 text=text,
-                gruut_lang=gruut_lang,
-                tts_model=tts_model,
-                vocoder_model=vocoder_model,
+                voice_or_lang=voice_id,
+                vocoder_or_quality=vocoder_quality,
                 tts_settings=tts_settings,
                 vocoder_settings=vocoder_settings,
-                audio_settings=audio_settings,
+                custom_voices_dir=self.models_dir,
             ),
         )
 
-        for _, audio in text_and_audios:
-            with io.BytesIO() as wav_io:
-                wav_write(wav_io, self.sample_rate, audio)
-                wav_data = wav_io.getvalue()
+        # Combine all audio
+        audios = []
+        sample_rate = self.sample_rate
+        for result in results:
+            sample_rate = result.sample_rate
+            audios.append(result.audio)
 
-            # Should be single output since we're not splitting sentences
-            break
+        with io.BytesIO() as wav_io:
+            wav_write(wav_io, sample_rate, np.concatenate(audios))
+            wav_data = wav_io.getvalue()
 
         return wav_data
+
+
+# -----------------------------------------------------------------------------
+
+
+@dataclass
+class GlowSpeakTTSModel:
+    onnx_model: typing.Any
+    phoneme_to_id: typing.Mapping[str, int]
+    phonemizer: typing.Any
+    phoneme_map: typing.Optional[typing.Mapping[str, typing.Sequence[str]]] = None
+
+
+@dataclass
+class GlowSpeakVocoderModel:
+    onnx_model: typing.Any
+    num_mels: int = 80
+    sample_rate: int = 22050
+    sample_bytes: int = 2
+    channels: int = 1
+    bias_spec: typing.Optional[typing.Any] = None
+
+
+class GlowSpeakTTS(TTSBase):
+    """Wraps Glow-Speak TTS (https://github.com/rhasspy/glow-speak)"""
+
+    def __init__(self, models_dir: typing.Union[str, Path], sample_rate: int = 22050):
+        self.models_dir = Path(models_dir)
+        self.sample_rate = sample_rate
+
+        self.no_optimizations = False
+
+        # onnxruntime crashes on armv7l if optimizations are enabled.
+        if platform.machine() == "armv7l":
+            # Enabling optimizations on 32-bit ARM crashes
+            self.no_optimizations = True
+
+        self.tts_models: typing.Dict[str, GlowSpeakTTSModel] = {}
+        self.vocoder_models: typing.Dict[str, GlowSpeakVocoderModel] = {}
+        self.vocoder_names: typing.Dict[str, str] = {
+            "high": "hifi-gan_high",
+            "medium": "hifi-gan_medium",
+            "low": "hifi-gan_low",
+        }
+
+        self.glow_speak_voices = {
+            # de-de
+            "de_thorsten": Voice(
+                id="de_thorsten",
+                name="thorsten",
+                locale="de-de",
+                language="de",
+                gender="M",
+            ),
+            # el
+            "el_rapunzelina": Voice(
+                id="el_rapunzelina",
+                name="rapunzelina",
+                locale="el-gr",
+                language="el",
+                gender="F",
+            ),
+            # en-us
+            "en-us_ljspeech": Voice(
+                id="en-us_ljspeech",
+                name="ljspeech",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            "en-us_mary_ann": Voice(
+                id="en-us_mary_ann",
+                name="mary_ann",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
+            # es-es
+            "es_tux": Voice(
+                id="es_tux", name="tux", locale="es-es", language="es", gender="M",
+            ),
+            # fi
+            "fi_harri_tapani_ylilammi": Voice(
+                id="fi_harri_tapani_ylilammi",
+                name="harri_tapani_ylilammi",
+                locale="fi-fi",
+                language="fi",
+                gender="M",
+            ),
+            # fr-fr
+            "fr_siwis": Voice(
+                id="fr_siwis", name="siwis", locale="fr-fr", language="fr", gender="F",
+            ),
+            # hu
+            "hu_diana_majlinger": Voice(
+                id="hu_diana_majlinger",
+                name="diana_majlinger",
+                locale="hu-hu",
+                language="hu",
+                gender="F",
+            ),
+            # it-it
+            "it_riccardo_fasol": Voice(
+                id="it_riccardo_fasol",
+                name="riccardo_fasol",
+                locale="it-it",
+                language="it",
+                gender="M",
+            ),
+            # ko
+            "ko_kss": Voice(
+                id="ko_kss", name="kss", locale="ko-ko", language="ko", gender="F",
+            ),
+            # nl
+            "nl_rdh": Voice(
+                id="nl_rdh", name="rdh", locale="nl", language="nl", gender="M",
+            ),
+            # ru-ru
+            "ru_nikolaev": Voice(
+                id="ru_nikolaev",
+                name="nikolaev",
+                locale="ru-ru",
+                language="ru",
+                gender="M",
+            ),
+            # sv-se
+            "sv_talesyntese": Voice(
+                id="sv_talesyntese",
+                name="talesyntese",
+                locale="sv-se",
+                language="sv",
+                gender="M",
+            ),
+            # sw
+            "sw_biblia_takatifu": Voice(
+                id="sw_biblia_takatifu",
+                name="biblia_takatifu",
+                locale="sw",
+                language="sw",
+                gender="M",
+            ),
+        }
+
+    async def voices(self) -> VoicesIterable:
+        """Get list of available voices."""
+        for voice in self.glow_speak_voices.values():
+            model_path = self.models_dir / voice.id
+            if model_path.exists():
+                yield voice
+
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
+        """Speak text as WAV."""
+        denoiser_strength = float(kwargs.get("denoiser_strength", 0.0))
+        noise_scale = float(kwargs.get("noise_scale", 0.667))
+        length_scale = float(kwargs.get("length_scale", 1.0))
+        vocoder_quality = str(kwargs.get("vocoder", "high")).strip().lower()
+
+        # ---------------------------------------------------------------------
+
+        # Run text to speech
+        import onnxruntime
+        from espeak_phonemizer import Phonemizer
+        from phonemes2ids import load_phoneme_ids, load_phoneme_map
+
+        import glow_speak
+
+        voice = self.glow_speak_voices.get(voice_id)
+        assert voice is not None, f"No Glow-Speak voice {voice_id}"
+
+        # TTS
+        tts_model = self.tts_models.get(voice.id)
+        if tts_model is None:
+            # Load TTS model
+            tts_model_dir = self.models_dir / voice.id
+            _LOGGER.debug("Loading glow-speak TTS model from %s", tts_model_dir)
+
+            tts_sess_options = onnxruntime.SessionOptions()
+            if self.no_optimizations:
+                tts_sess_options.graph_optimization_level = (
+                    onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
+                )
+
+            # Load phoneme -> id map
+            with open(
+                tts_model_dir / "phonemes.txt", encoding="utf-8"
+            ) as phonemes_file:
+                phoneme_to_id = load_phoneme_ids(phonemes_file)
+
+            # Load phoneme -> phoneme map
+            phoneme_map = None
+            phoneme_map_path = tts_model_dir / "phoneme_map.txt"
+            if phoneme_map_path.is_file():
+                with open(phoneme_map_path, encoding="utf-8") as phoneme_map_file:
+                    phoneme_map = load_phoneme_map(phoneme_map_file)
+
+            # Initialize eSpeak phonemizer
+            text_language = voice.id.split("_", maxsplit=1)[0]
+            phonemizer = Phonemizer(default_voice=text_language)
+
+            tts_model = GlowSpeakTTSModel(
+                onnx_model=onnxruntime.InferenceSession(
+                    str(tts_model_dir / "generator.onnx"), sess_options=tts_sess_options
+                ),
+                phonemizer=phonemizer,
+                phoneme_to_id=phoneme_to_id,
+                phoneme_map=phoneme_map,
+            )
+
+            self.tts_models[voice.id] = tts_model
+
+        assert tts_model is not None
+
+        # Vocoder
+        vocoder_name = self.vocoder_names.get(
+            vocoder_quality, self.vocoder_names["high"]
+        )
+        vocoder_model = self.vocoder_models.get(vocoder_name)
+        if vocoder_model is None:
+            # Load vocoder model
+            vocoder_model_dir = self.models_dir / vocoder_name
+            _LOGGER.debug("Loading glow-speak vocoder model from %s", vocoder_model_dir)
+
+            vocoder_sess_options = onnxruntime.SessionOptions()
+            if self.no_optimizations:
+                vocoder_sess_options.graph_optimization_level = (
+                    onnxruntime.GraphOptimizationLevel.ORT_DISABLE_ALL
+                )
+
+            # Load audio settings from config file
+            with open(
+                vocoder_model_dir / "config.json", encoding="utf-8"
+            ) as vocoder_config_file:
+                vocoder_config = json.load(vocoder_config_file)
+                vocoder_audio = vocoder_config["audio"]
+                num_mels = int(vocoder_audio["num_mels"])
+                sample_rate = int(vocoder_audio["sampling_rate"])
+                channels = int(vocoder_audio["channels"])
+                sample_bytes = int(vocoder_audio["sample_bytes"])
+
+            vocoder_model = GlowSpeakVocoderModel(
+                onnx_model=onnxruntime.InferenceSession(
+                    str(vocoder_model_dir / "generator.onnx"),
+                    sess_options=tts_sess_options,
+                ),
+                num_mels=num_mels,
+                sample_rate=sample_rate,
+                sample_bytes=sample_bytes,
+                channels=channels,
+            )
+
+            self.vocoder_models[vocoder_name] = vocoder_model
+
+        assert vocoder_model is not None
+
+        # Initialize denoiser
+        if (denoiser_strength > 0) and (vocoder_model.bias_spec is None):
+            _LOGGER.debug("Initializing denoiser")
+            vocoder_model.bias_spec = glow_speak.init_denoiser(
+                vocoder_model.onnx_model, vocoder_model.num_mels
+            )
+
+        # Run asynchronously in executor
+        # text -> ids -> mels -> audio -> wav
+        loop = asyncio.get_running_loop()
+        text_ids = await loop.run_in_executor(
+            None,
+            functools.partial(
+                glow_speak.text_to_ids,
+                text=text,
+                phonemizer=tts_model.phonemizer,
+                phoneme_to_id=tts_model.phoneme_to_id,
+                phoneme_map=tts_model.phoneme_map,
+            ),
+        )
+
+        mels = await loop.run_in_executor(
+            None,
+            functools.partial(
+                glow_speak.ids_to_mels,
+                ids=text_ids,
+                tts_model=tts_model.onnx_model,
+                noise_scale=noise_scale,
+                length_scale=length_scale,
+            ),
+        )
+
+        audio = await loop.run_in_executor(
+            None,
+            functools.partial(
+                glow_speak.mels_to_audio,
+                mels,
+                vocoder_model.onnx_model,
+                denoiser_strength=denoiser_strength,
+                bias_spec=vocoder_model.bias_spec,
+            ),
+        )
+
+        return glow_speak.audio_to_wav(
+            audio,
+            sample_rate=vocoder_model.sample_rate,
+            sample_bytes=vocoder_model.sample_bytes,
+            channels=vocoder_model.channels,
+        )

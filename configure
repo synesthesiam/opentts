@@ -1,0 +1,470 @@
+#!/usr/bin/env bash
+#
+# Directory of *this* script
+this_dir="$( cd "$( dirname "$0" )" && pwd )"
+
+# -----------------------------------------------------------------------------
+# Command-line Arguments
+# -----------------------------------------------------------------------------
+
+. "${this_dir}/etc/shflags"
+
+DEFINE_string 'languages' 'en' 'Language(s) to install (ar,bn,ca,cs,de,en,es,fi,fr,gu,hi,it,kn,mr,nl,pa,ru,sv,sw,ta,te,tr)'
+DEFINE_boolean 'espeak' true 'Enable/disable espeak-ng'
+DEFINE_boolean 'flite' true 'Enable/disable flite'
+DEFINE_boolean 'festival' true 'Enable/disable festival'
+DEFINE_boolean 'marytts' true 'Enable/disable MaryTTS'
+DEFINE_boolean 'larynx' true 'Enable/disable Larynx'
+DEFINE_boolean 'glow_speak' true 'Enable/disable Glow-Speak'
+
+FLAGS "$@" || exit $?
+eval set -- "${FLAGS_ARGV}"
+
+# -----------------------------------------------------------------------------
+# Load Settings
+# -----------------------------------------------------------------------------
+
+set -euo pipefail
+
+IFS=',' read -ra languages <<< "${FLAGS_languages}"
+
+no_espeak=''
+if [[ "${FLAGS_espeak}" -eq "${FLAGS_FALSE}" ]]; then
+    no_espeak='true'
+fi
+
+no_flite=''
+if [[ "${FLAGS_flite}" -eq "${FLAGS_FALSE}" ]]; then
+    no_flite='true'
+fi
+
+no_festival=''
+if [[ "${FLAGS_festival}" -eq "${FLAGS_FALSE}" ]]; then
+    no_festival='true'
+fi
+
+no_marytts=''
+if [[ "${FLAGS_marytts}" -eq "${FLAGS_FALSE}" ]]; then
+    no_marytts='true'
+fi
+
+no_larynx=''
+if [[ "${FLAGS_larynx}" -eq "${FLAGS_FALSE}" ]]; then
+    no_larynx='true'
+fi
+
+no_glow_speak=''
+if [[ "${FLAGS_glow_speak}" -eq "${FLAGS_FALSE}" ]]; then
+    no_glow_speak='true'
+fi
+
+# -----------------------------------------------------------------------------
+# Generate Files
+# -----------------------------------------------------------------------------
+
+FLITE_PACKAGES=('flite')
+FESTIVAL_PACKAGES=('festival')
+MARYTTS_PACKAGES=('openjdk-11-jre-headless')
+GLOW_SPEAK_PACKAGES=('libespeak-ng1')
+
+MARYTTS_JARS=('voices/marytts/lib')
+LARYNX_PYTHON=('dataclasses-json~=0.5.0' 'numpy>=1.20.0' 'onnxruntime>=1.6.0,<2.0' 'phonemes2ids~=1.0.0')
+LARYNX_VOCODERS=('voices/larynx/hifi_gan')
+GLOW_SPEAK_PYTHON=('espeak-phonemizer~=1.0.0' 'onnxruntime>=1.6.0,<2.0' 'phonemes2ids~=1.0.0')
+GLOW_SPEAK_VOCODERS=('voices/glow-speak/hifi-gan_*')
+
+# Extgra Debian packages installed with apt-get into the Docker image.
+packages=()
+if [[ -z "${no_espeak}" ]]; then
+    packages+=('espeak-ng')
+fi
+
+# Extra Python packages installed with pip into the shared virtual environment.
+python_packages=()
+
+# Paths that are excluded from .dockerignore (typically in voices/)
+keep_paths=()
+
+# Extra --build-args to pass to docker buildx build
+docker_args=()
+
+# Language that will be automatically selected in the web UI
+default_language=''
+
+# Supported languages:
+# --------------------
+# ar (Arabic)
+# bn (Bengali)
+# ca (Catalan)
+# cs (Czech)
+# de (German)
+# en (English)
+# es (Spanish)
+# el (Greek)
+# fi (Finnish)
+# fr (French)
+# gu (Gujarati)
+# hi (Hindi)
+# hu (Hungarian)
+# it (Italian)
+# kn (Kannada)
+# ko (Korean)
+# mr (Marathi)
+# nl (Dutch)
+# pa (Punjabi)
+# ru (Russian)
+# sv (Swedish)
+# sw (Swahili)
+# ta (Tamil)
+# te (Telugu)
+# tr (Turkish)
+
+for language in "${languages[@]}"; do
+    if [[ -z "${default_language}" ]]; then
+        default_language="${language}"
+        docker_args+=("DEFAULT_LANGUAGE=${default_language}")
+    fi
+
+    if [[ "${language}" == 'ar' ]]; then
+        # Arabic
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]})
+            python_packages+=('mishkal~=0.4.0' 'codernitydb3')
+            keep_paths+=('voices/festival/ar')
+        fi
+
+        python_packages+=('gruut[ar]~=2.0.0')
+    elif [[ "${language}" == 'bn' ]]; then
+        # Bengali
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_indic_ben_rm.flitevox')
+        fi
+    elif [[ "${language}" == 'ca' ]]; then
+        # Catalan
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]} 'festvox-ca-ona-hts')
+        fi
+    elif [[ "${language}" == 'cs' ]]; then
+        # Czech
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]} 'festvox-czech-dita' 'festvox-czech-krb' 'festvox-czech-machac' 'festvox-czech-ph')
+        fi
+
+        python_packages+=('gruut[cz]~=2.0.0')
+    elif [[ "${language}" == 'de' ]]; then
+        # German
+        if [[ -z "${no_marytts}" ]]; then
+            packages+=(${MARYTTS_PACKAGES[@]})
+            keep_paths+=('voices/marytts/de' ${MARYTTS_JARS[@]})
+        fi
+
+        if [[ -z "${no_larynx}" ]]; then
+            python_packages+=(${LARYNX_PYTHON[@]})
+            keep_paths+=('voices/larynx/de-de' ${LARYNX_VOCODERS[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/de_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        python_packages+=('gruut[de]~=2.0.0')
+    elif [[ "${language}" == 'el' ]]; then
+        # Greek
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/el_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+    elif [[ "${language}" == 'en' ]]; then
+        # English
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_us_*.flitefox' 'voices/flite/mycroft_voice_4.0.flitevox')
+        fi
+
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]})
+            packages+=('festvox-don' 'festvox-en1' 'festvox-kallpc16k' 'festvox-kdlpc16k' 'festvox-rablpc16k' 'festvox-us1' 'festvox-us2' 'festvox-us3' 'festvox-us-slt-hts')
+        fi
+
+        if [[ -z "${no_marytts}" ]]; then
+            packages+=(${MARYTTS_PACKAGES[@]})
+            keep_paths+=('voices/marytts/en-GB' 'voices/marytts/en-US' ${MARYTTS_JARS[@]})
+        fi
+
+        if [[ -z "${no_larynx}" ]]; then
+            keep_paths+=('voices/larynx/en-us' ${LARYNX_VOCODERS[@]})
+            python_packages+=(${LARYNX_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/en-us_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+    elif [[ "${language}" == 'es' ]]; then
+        # Spanish
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]} 'festvox-ellpc11k')
+        fi
+
+        if [[ -z "${no_larynx}" ]]; then
+            keep_paths+=('voices/larynx/es-es' ${LARYNX_VOCODERS[@]})
+            python_packages+=(${LARYNX_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/es_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        python_packages+=('gruut[es]~=2.0.0')
+    elif [[ "${language}" == 'fi' ]]; then
+        # Finnish
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]} 'festvox-suopuhe-lj' 'festvox-suopuhe-mv')
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/fi_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+    elif [[ "${language}" == 'fr' ]]; then
+        # French
+        if [[ -z "${no_marytts}" ]]; then
+            packages+=(${MARYTTS_PACKAGES[@]})
+            keep_paths+=('voices/marytts/fr' ${MARYTTS_JARS[@]})
+        fi
+
+        if [[ -z "${no_larynx}" ]]; then
+            keep_paths+=('voices/larynx/fr-fr' ${LARYNX_VOCODERS[@]})
+            python_packages+=(${LARYNX_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/fr_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        python_packages+=('gruut[fr]~=2.0.0')
+    elif [[ "${language}" == 'gu' ]]; then
+        # Gujarati
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_indic_guj_ad.flitevox' 'voices/flite/cmu_indic_guj_dp.flitevox' 'voices/flite/cmu_indic_guj_kt.flitevox')
+        fi
+    elif [[ "${language}" == 'hi' ]]; then
+        # Hindi
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_indic_hin_ab.flitevox')
+        fi
+    elif [[ "${language}" == 'hu' ]]; then
+        # Hungarian
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/hu_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+    elif [[ "${language}" == 'it' ]]; then
+        # Italian
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]} 'festvox-italp16k' 'festvox-itapc16k')
+        fi
+
+        if [[ -z "${no_marytts}" ]]; then
+            packages+=(${MARYTTS_PACKAGES[@]})
+            keep_paths+=('voices/marytts/it' ${MARYTTS_JARS[@]})
+        fi
+
+        if [[ -z "${no_larynx}" ]]; then
+            keep_paths+=('voices/larynx/it-it' ${LARYNX_VOCODERS[@]})
+            python_packages+=(${LARYNX_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/it_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        python_packages+=('gruut[it]~=2.0.0')
+    elif [[ "${language}" == 'kn' ]]; then
+        # Kannada
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_indic_mar_aup.flitevox' 'voices/flite/cmu_indic_mar_slp.flitevox')
+        fi
+    elif [[ "${language}" == 'ko' ]]; then
+        # Korean
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/ko_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+    elif [[ "${language}" == 'mr' ]]; then
+        # Marathi
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_indic_mar_aup.flitevox' 'voices/flite/cmu_indic_mar_slp.flitevox')
+        fi
+
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]} 'festvox-mr-nsk')
+        fi
+    elif [[ "${language}" == 'nl' ]]; then
+        # Dutch
+        if [[ -z "${no_larynx}" ]]; then
+            keep_paths+=('voices/larynx/nl' ${LARYNX_VOCODERS[@]})
+            python_packages+=(${LARYNX_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/nl_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        python_packages+=('gruut[nl]~=2.0.0')
+    elif [[ "${language}" == 'pa' ]]; then
+        # Punjabi
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_indic_pan_amp.flitevox')
+        fi
+    elif [[ "${language}" == 'ru' ]]; then
+        # Russian
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]})
+            packages+=('festvox-ru')
+            python_packages+=('transliterate~=1.10.0')
+        fi
+
+        if [[ -z "${no_marytts}" ]]; then
+            packages+=(${MARYTTS_PACKAGES[@]})
+            keep_paths+=('voices/marytts/ru' ${MARYTTS_JARS[@]})
+        fi
+
+        if [[ -z "${no_larynx}" ]]; then
+            keep_paths+=('voices/larynx/ru-ru' ${LARYNX_VOCODERS[@]})
+            python_packages+=(${LARYNX_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/ru_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        python_packages+=('gruut[ru]~=2.0.0')
+    elif [[ "${language}" == 'sv' ]]; then
+        # Swedish
+        if [[ -z "${no_marytts}" ]]; then
+            packages+=(${MARYTTS_PACKAGES[@]})
+            keep_paths+=('voices/marytts/sv' ${MARYTTS_JARS[@]})
+        fi
+
+        if [[ -z "${no_larynx}" ]]; then
+            keep_paths+=('voices/larynx/sv-se' ${LARYNX_VOCODERS[@]})
+            python_packages+=(${LARYNX_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/sv_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        python_packages+=('gruut[sv]~=2.0.0')
+    elif [[ "${language}" == 'sw' ]]; then
+        # Swahili
+        if [[ -z "${no_larynx}" ]]; then
+            keep_paths+=('voices/larynx/sw' ${LARYNX_VOCODERS[@]})
+            python_packages+=(${LARYNX_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/sw_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        python_packages+=('gruut[sw]~=2.0.0')
+    elif [[ "${language}" == 'ta' ]]; then
+        # Tamil
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_indic_tam_sdr.flitevox')
+        fi
+    elif [[ "${language}" == 'te' ]]; then
+        # Telugu
+        if [[ -z "${no_flite}" ]]; then
+            packages+=(${FLITE_PACKAGES[@]})
+            keep_paths+=('voices/flite/cmu_indic_tel_kpn.flitevox' 'voices/flite/cmu_indic_tel_sk.flitevox' 'voices/flite/cmu_indic_tel_ss.flitevox')
+        fi
+
+        if [[ -z "${no_festival}" ]]; then
+            packages+=(${FESTIVAL_PACKAGES[@]})
+            packages+=('festvox-te-nsk')
+        fi
+
+        if [[ -z "${no_marytts}" ]]; then
+            packages+=(${MARYTTS_PACKAGES[@]})
+            keep_paths+=('voices/marytts/te' ${MARYTTS_JARS[@]})
+        fi
+    elif [[ "${language}" == 'tr' ]]; then
+        # Turkish
+        if [[ -z "${no_marytts}" ]]; then
+            packages+=(${MARYTTS_PACKAGES[@]})
+            keep_paths+=('voices/marytts/tr' ${MARYTTS_JARS[@]})
+        fi
+    fi
+
+    echo "${language}"
+done < <(echo "${languages}")
+
+
+# -----------------------------------------------------------------------------
+
+temp_dir="$(mktemp -d)"
+
+function cleanup {
+    rm -rf "${temp_dir}"
+}
+
+trap cleanup EXIT;
+
+# Generate files
+touch \
+    "${temp_dir}/packages" \
+    "${temp_dir}/python_packages" \
+    "${temp_dir}/.dockerignore" \
+    "${temp_dir}/.dockerargs"
+
+for package in "${packages[@]}"; do
+    echo "${package}" >> "${temp_dir}/packages"
+done
+cat "${this_dir}/packages.in" "${temp_dir}/packages" | sort | uniq > "${this_dir}/packages"
+
+for python_package in "${python_packages[@]}"; do
+    echo "${python_package}" >> "${temp_dir}/python_packages"
+done
+cat "${this_dir}/python_packages.in" "${temp_dir}/python_packages" | sort | uniq > "${this_dir}/python_packages"
+
+for keep_path in "${keep_paths[@]}"; do
+    echo "!${keep_path}" >> "${temp_dir}/.dockerignore"
+done
+cat "${this_dir}/.dockerignore.in" "${temp_dir}/.dockerignore" | sort | uniq > "${this_dir}/.dockerignore"
+
+truncate -s 0 "${this_dir}/.dockerargs"
+for docker_arg in "${docker_args[@]}"; do
+    echo "--build-arg \"${docker_arg}\"" >> "${this_dir}/.dockerargs"
+done
+
+mkdir -p "${this_dir}/download"

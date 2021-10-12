@@ -1,3 +1,21 @@
+## [2.1] - 2021 Oct 15
+
+### Added
+
+- SSML support using gruut 2.0
+  - <speak>, <voice name="">, <s lang="">, <w lang="" role="">, <break time="">, <say-as interpret-as="" format="">, <sub alias="">
+  - voice name is <tts>:<voice>, so different TTS system can be mixed
+- Swahili, Finnish, Hungarian, Greek, and Korean voices with Glow-Speak
+- Additional Larynx voices
+
+### Fixed
+
+- Single sentence synthesis with Larynx
+
+### Removed
+
+- Remote HTTP TTS system option
+
 ## [2.0] - 2021 Apr 29
 
 ### Added

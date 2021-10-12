@@ -53,6 +53,13 @@ _TEST_SENTENCES = {
         "This cake is great. It's so delicious and moist.",
         "Prior to November twenty second, nineteen sixty three.",
     ],
+    "el": [
+        "Καιρό έχουμε να τα πούμε!",
+        "Χάρηκα για την γνωρημία.",
+        "Θέλεις να χορέψεις μαζί μου;",
+        "Μία γλώσσα δεν είναι ποτέ αρκετή.",
+        "Το αερόστρωμνό μου είναι γεμάτο χέλια.",
+    ],
     "es": [
         "Una cerveza, por favor.",
         "¿Puedes hablar más despacio?",
@@ -85,6 +92,13 @@ _TEST_SENTENCES = {
         "आप की यात्रा सुखद हो",
         "एक भाषा कभी भी काफ़ी नहीं होती",
     ],
+    "hu": [
+        "Hyvää kiitos, entä sinulle?",
+        "Puhutteko suomen lisäksi jotain muuta kieltä?",
+        "Haluaisitko tanssia kanssani?",
+        "Yksi kieli ei koskaan riitä.",
+        "Ilmatyynyalukseni on täynnä ankeriaita.",
+    ],
     "it": [
         "Da dove vieni?",
         "Parli un'altra lingua oltre l'italiano?",
@@ -97,6 +111,13 @@ _TEST_SENTENCES = {
         "ಅಥವಾ ನೀವು ಯಾವ ಕಡೆಯವರು?",
         "ತುಂಬಾ ಸಂತೋಷ ಅಥವಾ ಖುಷಿಯಾಯ್ತು",
         "ಒಂದೇ ಭಾಷೆ ಸಾಲಲ್ಲ ಅಥವಾ ಸಾಲೋದಿಲ್ಲ",
+    ],
+    "ko": [
+        "제 호버크래프트가 장어로 가득해요",
+        "한 가지 언어는 충분하지 못 해",
+        "새해 복 많이 받으시고,가정에 항상 웃음꽃 피시길 기원합니다",
+        "즐거운 성탄절 보내시고 새해 복 많이 받으세요",
+        "다시 한번 말씀해주시겠어요?",
     ],
     "mr": [
         "तुम्हाला भेटून आनंद झाला",
@@ -130,6 +151,13 @@ _TEST_SENTENCES = {
         "Den här damen betalar för allting.",
         "Ett språk är aldrig nog.",
         "Min svävare är full med ål.",
+    ],
+    "sw": [
+        "Nakutakia siku njema!",
+        "Lugha moja haitoshi.",
+        "Nimefurahi kukutana nawe.",
+        "Unazungumza Kiswahili?",
+        "Gari langu linaloangama limejaa na mikunga.",
     ],
     "ta": [
         "உங்கள் பெயர் என்ன?",

@@ -36,6 +36,7 @@ fi
 # pa (Punjabi)
 # ru (Russian)
 # sv (Swedish)
+# sw (Swahili)
 # ta (Tamil)
 # te (Telugu)
 # tr (Turkish)
