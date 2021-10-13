@@ -16,6 +16,8 @@ Unifies access to multiple open source text to speech systems and voices for man
     * English (2), German (1), French (1), Spanish (1), Dutch (1), Russian (1), Swedish (1), Italian (1), Swahili (1), Greek (1), Finnish (1), Hungarian (1), Korean (1)
     * Model types available: [GlowTTS](https://github.com/rhasspy/glow-tts-train)
     * Vocoders available: [HiFi-Gan](https://github.com/rhasspy/hifi-gan-train) (3 levels of quality)
+* [Coqui-TTS](https://github.com/coqui-ai/TTS)
+    * English (110), Japanese (1), Chinese (1)
 * [nanoTTS](https://github.com/gmn/nanotts)
     * English (2), German (1), French (1), Italian (1), Spanish (1)
 * [MaryTTS](http://mary.dfki.de)
@@ -47,15 +49,16 @@ where `<LANGUAGE>` is one of:
 * ca (Catalan)
 * cs (Czech)
 * de (German)
+* el (Greek)
 * en (English)
 * es (Spanish)
-* el (Greek)
 * fi (Finnish)
 * fr (French)
 * gu (Gujarati)
 * hi (Hindi)
 * hu (Hungarian)
 * it (Italian)
+* ja (Japanese)
 * kn (Kannada)
 * ko (Korean)
 * mr (Marathi)
@@ -67,6 +70,7 @@ where `<LANGUAGE>` is one of:
 * ta (Tamil)
 * te (Telugu)
 * tr (Turkish)
+* zh (Chinese)
 
 Visit http://localhost:5500
 
@@ -133,21 +137,35 @@ You may need to change the port in your `docker run` command to `-p 59125:5500` 
 
 On the Raspberry Pi, you may need to lower the quality of [Larynx](https://github.com/rhasspy/larynx) voices to get reasonable response times.
 
-This is done by appending the vocoder name to the end of your voice:
+This is done by appending the quality level to the end of your voice:
 
 ```yaml
 tts:
   - platform: marytts
-    voice:larynx:harvard-glow_tts;hifi_gan:vctk_small
+    voice:larynx:harvard-glow_tts;low
 ```
 
-Available vocoders are:
+Available quality levels are `high` (the default), `medium`, and `low`.
 
-* `hifi_gan:universal_large` (best quality, slowest, default)
-* `hifi_gan:vctk_medium` (medium quality)
-* `hifi_gan:vctk_small` (lowest quality, fastest)
+Note that this only applies to Larynx and Glow-Speak voices.
 
-Note that this only applies to Larynx voices.
+### Speaker ID
+
+For multi-speaker models (currently just `coqui-tts:en_vctk`), you can append a speaker name or id to your voice:
+
+```yaml
+tts:
+  - platform: marytts
+    voice:coqui-tts:en_vctk#p228
+```
+
+You can get the available speaker names from `/api/voices` or provide a 0-based index instead:
+
+```yaml
+tts:
+  - platform: marytts
+    voice:coqui-tts:en_vctk#42
+```
 
 ## Default Larynx Settings
 

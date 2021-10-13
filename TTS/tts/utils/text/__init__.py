@@ -4,8 +4,9 @@
 import re
 from typing import Dict, List
 
-import gruut
 from gruut_ipa import IPA
+
+import gruut
 from TTS.tts.utils.text import cleaners
 from TTS.tts.utils.text.chinese_mandarin.phonemizer import chinese_text_to_phonemes
 from TTS.tts.utils.text.japanese.phonemizer import japanese_text_to_phonemes

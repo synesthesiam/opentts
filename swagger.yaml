@@ -16,7 +16,7 @@ paths:
         - in: query
           name: voice
           required: true
-          description: 'Voice in the form tts:voice'
+          description: 'Voice in the form tts:voice or tts:voice#speaker_id'
           schema:
             type: string
             example: 'espeak:en'
@@ -29,14 +29,14 @@ paths:
             example: 'Welcome to the world of speech synthesis!'
         - in: query
           name: vocoder
-          description: 'Vocoder quality (Larynx only)'
+          description: 'Vocoder quality (Larynx/Glow-Speak only)'
           schema:
             type: string
             enum: [high, medium, low]
             example: 'high'
         - in: query
           name: denoiserStrength
-          description: 'Strength of vocoder denoiser (0-1, 0 is disabled, Larynx only)'
+          description: 'Strength of vocoder denoiser (0-1, 0 is disabled, Larynx/Glow-Speak only)'
           schema:
             type: number
             example: 0.03

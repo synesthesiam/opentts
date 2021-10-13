@@ -74,6 +74,7 @@ COPY js/ /home/opentts/app/js/
 COPY templates/ /home/opentts/app/templates/
 COPY glow_speak/ /home/opentts/app/glow_speak/
 COPY larynx/ /home/opentts/app/larynx/
+COPY TTS/ /home/opentts/app/TTS/
 COPY app.py tts.py /home/opentts/app/
 
 ARG DEFAULT_LANGUAGE='en'

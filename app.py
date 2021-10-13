@@ -5,14 +5,17 @@ import asyncio
 import dataclasses
 import hashlib
 import io
+import itertools
 import logging
 import math
+import re
 import shutil
 import signal
 import tempfile
 import time
 import typing
 import wave
+from collections import defaultdict
 from pathlib import Path
 from urllib.parse import parse_qs
 from uuid import uuid4
@@ -57,7 +60,41 @@ lang_path = _DIR / "LANGUAGE"
 if lang_path.is_file():
     _DEFAULT_LANGUAGE = lang_path.read_text().strip()
 
-_VOICE_ALIAS: typing.Dict[str, str] = {}
+_VOICE_ALIASES: typing.Dict[str, typing.List[str]] = defaultdict(list)
+
+# Add default aliases
+_VOICE_ALIASES["en"] = ["glow-speak:en-us_mary_ann", "nanotts:en-GB"]
+_VOICE_ALIASES["en-gb"] = ["larynx:ek-glow_tts", "nanotts:en-GB"]
+
+_VOICE_ALIASES["de"] = ["glow-speak:de_thorsten", "nanotts:de-DE"]
+_VOICE_ALIASES["es"] = ["glow-speak:es_tux", "nanotts:es-ES"]
+_VOICE_ALIASES["fr"] = ["glow-speak:fr_siwis", "nanotts:fr-FR"]
+_VOICE_ALIASES["it"] = ["glow-speak:it_riccardo_fasol", "nanotts:it-IT"]
+
+_VOICE_ALIASES["el"] = ["glow-speak:el_rapunzelina"]
+_VOICE_ALIASES["fi"] = ["glow-speak:fi_harri_tapani_ylilammi"]
+_VOICE_ALIASES["hu"] = ["glow-speak:hu_diana_majlinger"]
+_VOICE_ALIASES["ko"] = ["glow-speak:ko_kss"]
+_VOICE_ALIASES["nl"] = ["glow-speak:nl_rdh"]
+_VOICE_ALIASES["ru"] = ["glow-speak:ru_nikolaev"]
+_VOICE_ALIASES["sv"] = ["glow-speak:sv_talesyntese"]
+_VOICE_ALIASES["sw"] = ["glow-speak:sw_biblia_takatifu"]
+
+_VOICE_ALIASES["ar"] = ["festival:ara_norm_ziad_hts"]
+_VOICE_ALIASES["bn"] = ["flite:cmu_indic_ben_rm"]
+_VOICE_ALIASES["ca"] = ["festival:upc_ca_ona_hts"]
+_VOICE_ALIASES["cs"] = ["festival:czech_dita"]
+_VOICE_ALIASES["gu"] = ["flite:cmu_indic_guj_ad"]
+_VOICE_ALIASES["hi"] = ["flite:cmu_indic_hin_ab"]
+_VOICE_ALIASES["kn"] = ["flite:cmu_indic_kan_plv"]
+_VOICE_ALIASES["mr"] = ["flite:cmu_indic_mar_aup"]
+_VOICE_ALIASES["pa"] = ["flite:cmu_indic_pan_amp"]
+_VOICE_ALIASES["ta"] = ["flite:cmu_indic_tam_sdr"]
+_VOICE_ALIASES["te"] = ["marytts:cmu-nk-hsmm"]
+_VOICE_ALIASES["tr"] = ["marytts:dfki-ot-hsmm"]
+
+_VOICE_ALIASES["ja"] = ["coqui-tts:ja_kokoro"]
+_VOICE_ALIASES["zh"] = ["coqui-tts:zh_baker"]
 
 # -----------------------------------------------------------------------------
 
@@ -109,8 +146,8 @@ parser.add_argument(
 parser.add_argument(
     "--larynx-denoiser-strength",
     type=float,
-    default=0.001,
-    help="Larynx denoiser strength to use if not specified in API call (default: 0.001)",
+    default=0.01,
+    help="Larynx denoiser strength to use if not specified in API call (default: 0.01)",
 )
 parser.add_argument(
     "--larynx-noise-scale",
@@ -141,7 +178,7 @@ _LOGGER.debug("Default language: %s", _DEFAULT_LANGUAGE)
 
 if args.preferred_voice:
     for pref_lang, pref_voice in args.preferred_voice:
-        _VOICE_ALIAS[pref_lang] = pref_voice
+        _VOICE_ALIASES[pref_lang].insert(0, pref_voice)
 
 # -----------------------------------------------------------------------------
 
@@ -206,6 +243,9 @@ if not args.no_larynx:
     except Exception:
         larynx_available = False
 
+        if args.debug:
+            _LOGGER.exception("larynx")
+
     if larynx_available:
         _TTS["larynx"] = LarynxTTS(models_dir=(_VOICES_DIR / "larynx"))
 
@@ -218,6 +258,9 @@ if not args.no_glow_speak:
     except Exception:
         glow_speak_available = False
 
+        if args.debug:
+            _LOGGER.exception("glow-speak")
+
     if glow_speak_available:
         _TTS["glow-speak"] = GlowSpeakTTS(models_dir=(_VOICES_DIR / "glow-speak"))
 
@@ -229,6 +272,9 @@ if not args.no_coqui:
         coqui_available = True
     except Exception:
         coqui_available = False
+
+        if args.debug:
+            _LOGGER.exception("coqui-tts")
 
     if coqui_available:
         _TTS["coqui-tts"] = CoquiTTS(models_dir=(_VOICES_DIR / "coqui-tts"))
@@ -256,14 +302,12 @@ async def text_to_wav(
     denoiser_strength: typing.Optional[float] = None,
     noise_scale: typing.Optional[float] = None,
     length_scale: typing.Optional[float] = None,
-    speaker_id: typing.Optional[int] = None,
     use_cache: bool = True,
     ssml: bool = False,
     ssml_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
 ) -> bytes:
     """Runs TTS for each line and accumulates all audio into a single WAV."""
     assert voice, "No voice provided"
-    assert ":" in voice, "Voice format is tts:voice"
 
     # Look up in cache
     wav_bytes = bytes()
@@ -297,7 +341,6 @@ async def text_to_wav(
             default_voice=voice,
             default_lang=lang,
             ssml_args=ssml_args,
-            speaker_id=speaker_id,
             # Larynx settings
             vocoder=vocoder,
             denoiser_strength=denoiser_strength,
@@ -308,7 +351,6 @@ async def text_to_wav(
         wavs_gen = text_to_wavs(
             text=text,
             voice=voice,
-            speaker_id=speaker_id,
             # Larynx settings
             vocoder=vocoder,
             denoiser_strength=denoiser_strength,
@@ -399,12 +441,23 @@ async def text_to_wav(
 async def text_to_wavs(
     text: str, voice: str, **say_args
 ) -> typing.AsyncIterable[WAV_AND_SAMPLE_RATE]:
-    tts_name, voice_id = voice.split(":")
+    voice = resolve_voice(voice)
+
+    assert ":" in voice, f"Invalid voice: {voice}"
+    tts_name, voice_id = voice.split(":", maxsplit=1)
     tts = _TTS.get(tts_name.lower())
     assert tts, f"No TTS named {tts_name}"
 
+    if "#" in voice_id:
+        voice_id, speaker_id = voice_id.split("#", maxsplit=1)
+        say_args["speaker_id"] = speaker_id
+
     # Process by line with single TTS
     for line_index, line in enumerate(text.strip().splitlines()):
+        line = line.strip()
+        if not line:
+            continue
+
         _LOGGER.debug("Synthesizing line %s (%s char(s))", line_index + 1, len(line))
         line_wav_bytes = await tts.say(line, voice_id, **say_args)
         assert line_wav_bytes, f"No WAV audio from line: {line}"
@@ -439,25 +492,36 @@ async def ssml_to_wavs(
             **ssml_args,
         )
     ):
+        sent_text = sentence.text_with_ws
+        if not sent_text.strip():
+            # Skip empty sentences
+            continue
+
         sent_voice = default_voice
         if sentence.voice:
             sent_voice = sentence.voice
         elif sentence.lang and (sentence.lang != default_lang):
-            # Look up voice for language or fall back to eSpeak
-            sent_voice = _VOICE_ALIAS.get(sentence.lang, f"espeak:{sentence.lang}")
+            sent_voice = sentence.lang
+
+        sent_voice = resolve_voice(sent_voice)
 
         assert ":" in sent_voice, f"Invalid voice format: {sent_voice}"
         tts_name, voice_id = sent_voice.split(":")
         tts = _TTS.get(tts_name.lower())
         assert tts, f"No TTS named {tts_name}"
 
-        sent_text = sentence.text_with_ws
+        if "#" in voice_id:
+            voice_id, speaker_id = voice_id.split("#", maxsplit=1)
+            say_args["speaker_id"] = speaker_id
+        else:
+            # Need to remove speaker id for single speaker voices
+            say_args.pop("speaker_id", None)
 
         _LOGGER.debug(
             "Synthesizing sentence %s with voice %s: %s",
             sent_index + 1,
             sent_voice,
-            sent_text,
+            sent_text.strip(),
         )
 
         sent_wav_bytes = await tts.say(sent_text, voice_id, **say_args)
@@ -618,14 +682,14 @@ async def app_say() -> Response:
         length_scale = float(length_scale)
 
     speaker_id = str(request.args.get("speakerId", ""))
-    if speaker_id:
-        speaker_id = int(speaker_id)
+    if speaker_id and ("#" not in voice):
+        voice = f"{voice}#{speaker_id}"
 
     # SSML settings
     ssml = convert_bool(request.args.get("ssml", "false"))
-    ssml_numbers = convert_bool(request.args.get("ssmlNumbers", "false"))
-    ssml_dates = convert_bool(request.args.get("ssmlDates", "false"))
-    ssml_currency = convert_bool(request.args.get("ssmlCurrency", "false"))
+    ssml_numbers = convert_bool(request.args.get("ssmlNumbers", "true"))
+    ssml_dates = convert_bool(request.args.get("ssmlDates", "true"))
+    ssml_currency = convert_bool(request.args.get("ssmlCurrency", "true"))
 
     ssml_args = {
         "verbalize_numbers": ssml_numbers,
@@ -641,13 +705,49 @@ async def app_say() -> Response:
         denoiser_strength=denoiser_strength,
         noise_scale=noise_scale,
         length_scale=length_scale,
-        speaker_id=speaker_id,
         use_cache=use_cache,
         ssml=ssml,
         ssml_args=ssml_args,
     )
 
     return Response(wav_bytes, mimetype="audio/wav")
+
+
+def resolve_voice(voice: str, fallback_voice: typing.Optional[str] = None) -> str:
+    """Resolve a voice or language based on aliases"""
+    original_voice = voice
+    if "#" in voice:
+        # Remove speaker id
+        # tts:voice#speaker_id
+        voice, _speaker_id = voice.split("#", maxsplit=1)
+
+    # Resolve voices in order:
+    # 1. Aliases in order of preference
+    # 2. fallback voice provided
+    # 3. Original voice
+    # 4. espeak voice
+
+    fallback_voices = []
+    if fallback_voice is not None:
+        fallback_voices.append(fallback_voice)
+
+    fallback_voices.append(original_voice)
+
+    alias_key = voice.lower()
+    if alias_key not in _VOICE_ALIASES:
+        # en-US -> en
+        alias_key = re.split(r"[-_]", alias_key, maxsplit=1)[0]
+
+    if ":" not in voice:
+        fallback_voices.append(f"espeak:{voice}")
+
+    for preferred_voice in itertools.chain(_VOICE_ALIASES[alias_key], fallback_voices):
+        tts, _voice_id = preferred_voice.split(":", maxsplit=1)
+        if tts in _TTS:
+            # If TTS system is loaded, assume voice will be present
+            return preferred_voice
+
+    raise ValueError(f"Cannot resolve voice: {voice}")
 
 
 # -----------------------------------------------------------------------------

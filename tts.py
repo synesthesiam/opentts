@@ -29,7 +29,8 @@ class Voice:
     language: str
     locale: str
     tag: typing.Optional[typing.Dict[str, typing.Any]] = None
-    num_speakers: int = 0
+    multispeaker: bool = False
+    speakers: typing.Optional[typing.Dict[str, int]] = None
 
 
 VoicesIterable = typing.AsyncGenerator[Voice, None]
@@ -1616,7 +1617,7 @@ class CoquiTTS(TTSBase):
                 locale="en-us",
                 language="en",
                 gender="MF",
-                num_speakers=109,
+                multispeaker=True,
             ),
             # ja
             "ja_kokoro": Voice(
@@ -1637,6 +1638,15 @@ class CoquiTTS(TTSBase):
         for voice in self.tts_voices.values():
             model_path = self.models_dir / voice.id
             if model_path.exists():
+                if voice.multispeaker and (voice.speakers is None):
+                    # Load speaker ids
+                    speaker_ids_path = model_path / "speaker_ids.json"
+                    if speaker_ids_path.is_file():
+                        with open(
+                            speaker_ids_path, "r", encoding="utf-8"
+                        ) as speaker_ids_file:
+                            voice.speakers = json.load(speaker_ids_file)
+
                 yield voice
 
     async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
@@ -1649,31 +1659,50 @@ class CoquiTTS(TTSBase):
         voice = self.tts_voices.get(voice_id)
         assert voice is not None, f"No Coqui-TTS voice {voice_id}"
 
-        if (voice.num_speakers > 0) and (speaker_id is None):
-            speaker_id = 0
+        if (voice.multispeaker) and (
+            (isinstance(speaker_id, str) and not speaker_id) or (speaker_id is None)
+        ):
+            if voice.speakers:
+                # First speaker name
+                speaker_id = next(iter(voice.speakers))
+            else:
+                # First speaker id
+                speaker_id = 0
 
         synthesizer = self.synthesizers.get(voice.id)
         if synthesizer is None:
             voice_dir = self.models_dir / voice.id
             vocoder_dir = voice_dir / "vocoder"
 
+            vocoder_checkpoint = ""
+            vocoder_config = ""
+
             if vocoder_dir.is_dir():
                 vocoder_checkpoint = str(vocoder_dir / "model_file.pth.tar")
                 vocoder_config = str(vocoder_dir / "config.json")
-            else:
-                vocoder_checkpoint = None
-                vocoder_config = None
+
+            tts_speakers_file = ""
+            speakers_json_path = voice_dir / "speaker_ids.json"
+            if speakers_json_path.is_file():
+                tts_speakers_file = str(speakers_json_path)
 
             synthesizer = Synthesizer(
                 tts_checkpoint=str(voice_dir / "model_file.pth.tar"),
                 tts_config_path=str(voice_dir / "config.json"),
                 vocoder_checkpoint=vocoder_checkpoint,
                 vocoder_config=vocoder_config,
+                tts_speakers_file=tts_speakers_file,
             )
 
             self.synthesizers[voice.id] = synthesizer
 
         assert synthesizer is not None
+
+        # Ensure full stop
+        text = text.strip()
+        if text and (text[-1] not in {".", "?", "!"}):
+            text = text + "."
+
         audio = synthesizer.tts(text, speaker_idx=speaker_id)
 
         with io.BytesIO() as wav_io:

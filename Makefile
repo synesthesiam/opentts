@@ -1,19 +1,16 @@
 .PHONY: check reformat venv
 .SHELL := bash
 
-DOCKER_PLATFORMS := linux/amd64
-DOCKER_TAG := synesthesiam/opentts
-DOCKER_BUILD := docker buildx build . -f Dockerfile2
-DOCKER_RUN := docker run -it -p 5500:5500
-RUN_ARGS := --debug
+DOCKER_PLATFORMS ?= linux/amd64
+DOCKER_TAG ?= synesthesiam/opentts
+DOCKER_PUSH ?=
+DOCKER_BUILD ?= docker buildx build . -f Dockerfile --platform $(DOCKER_PLATFORMS) $(DOCKER_PUSH)
+DOCKER_RUN ?= docker run -it -p 5500:5500
+RUN_ARGS ?= --debug
 
-# all: ar bn ca cs de en es fi fr gu hi it kn mr nl pa ru sv sw ta te tr
-all:
-	./configure --language de,en
-	xargs < .dockerargs $(DOCKER_BUILD) --tag $(DOCKER_TAG):latest
+all: en
 
-run:
-	$(DOCKER_RUN) $(DOCKER_TAG):latest $(RUN_ARGS)
+run: en-run
 
 # Arabic
 ar:
@@ -129,6 +126,14 @@ it:
 it-run:
 	$(DOCKER_RUN) $(DOCKER_TAG):it $(RUN_ARGS)
 
+# Japanese
+ja:
+	./configure --language ja
+	xargs < .dockerargs $(DOCKER_BUILD) --tag $(DOCKER_TAG):ja
+
+ja-run:
+	$(DOCKER_RUN) $(DOCKER_TAG):ja $(RUN_ARGS)
+
 # Kannada
 kn:
 	./configure --language kn
@@ -216,6 +221,14 @@ tr:
 
 tr-run:
 	$(DOCKER_RUN) $(DOCKER_TAG):tr $(RUN_ARGS)
+
+# Chinese
+zh:
+	./configure --language zh
+	xargs < .dockerargs $(DOCKER_BUILD) --tag $(DOCKER_TAG):zh
+
+zh-run:
+	$(DOCKER_RUN) $(DOCKER_TAG):zh $(RUN_ARGS)
 
 check:
 	scripts/check-code.sh

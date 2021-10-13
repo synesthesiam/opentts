@@ -260,7 +260,11 @@ class Synthesizer(object):
                     ]
                 else:
                     # get speaker idx from the speaker name
-                    speaker_id = self.tts_model.speaker_manager.speaker_ids[speaker_idx]
+                    try:
+                        speaker_id = self.tts_model.speaker_manager.speaker_ids[speaker_idx]
+                    except KeyError:
+                        # Interpet as int
+                        speaker_id = int(speaker_idx)
 
             elif not speaker_idx and not speaker_wav:
                 raise ValueError(

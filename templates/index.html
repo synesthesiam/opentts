@@ -80,6 +80,10 @@
                     <select id="voice-list" name="voices" onchange="changeVoice()">
                     </select>
                 </div>
+                <div id="speaker-id-div" style="display: none;">
+                  <select id="speaker-id">
+                  </select>
+                </div>
                 <div class="col-auto">
                   <input type="checkbox" id="ssml">
                   <label class="ml-1" for="ssml">SSML</label>
@@ -92,17 +96,17 @@
                     <ul class="dropdown-menu checkbox-menu allow-focus">
                       <li >
                         <label>
-                          <input type="checkbox" id="ssml-numbers"> Numbers
+                          <input type="checkbox" id="ssml-numbers" checked> Numbers
                         </label>
                       </li>
                       <li >
                         <label>
-                          <input type="checkbox" id="ssml-dates"> Dates
+                          <input type="checkbox" id="ssml-dates" checked> Dates
                         </label>
                       </li>
                       <li >
                         <label>
-                          <input type="checkbox" id="ssml-currency"> Currency
+                          <input type="checkbox" id="ssml-currency" checked> Currency
                         </label>
                       </li>
                     </ul>
@@ -115,7 +119,7 @@
                         <option value="low">Low Quality</option>
                     </select>
                     <label for="denoiser-strength" class="ml-2">Denoiser:</label>
-                    <input type="number" id="denoiser-strength" name="denoiser" min="0" max="1" step="0.001" value="0.001">
+                    <input type="number" id="denoiser-strength" name="denoiser" min="0" max="1" step="0.001" value="0.01">
                 </div>
             </div>
             <div class="row mt-3">
@@ -142,6 +146,8 @@
         <script type="text/javascript" src="js/bootstrap.min.js"></script>
 
         <script>
+          var voice_speakers = {}
+
           function q(selector) {return document.querySelector(selector)}
           q('#text').focus()
           function do_tts(e) {
@@ -167,7 +173,10 @@
               var vocoder = vocoderList.options[vocoderList.selectedIndex].value || ''
               var denoiserStrength = q('#denoiser-strength').value
 
-              // var speakerId = q('#speakerId').value
+              var speakerId = ''
+              if (voice_speakers[voice]) {
+                  speakerId = q('#speaker-id').value
+              }
 
               var useCache = 'false';
               if (q('#use-cache')) {
@@ -187,6 +196,7 @@
                       '&vocoder=' + encodeURIComponent(vocoder) +
                       '&denoiserStrength=' + encodeURIComponent(denoiserStrength) +
                       '&text=' + encodeURIComponent(text) +
+                      '&speakerId=' + encodeURIComponent(speakerId) +
                       '&ssml=' + encodeURIComponent(ssml) +
                       '&ssmlNumbers=' + encodeURIComponent(ssmlNumbers) +
                       '&ssmlDates=' + encodeURIComponent(ssmlDates) +
@@ -222,10 +232,30 @@
               var voice = voiceList.options[voiceList.selectedIndex].value
               q('#voice-id').innerHTML = voice
 
-              if (voice.startsWith("larynx:") || voice.startsWith("glow-speak:")) {
+              if (voice.startsWith('larynx:') || voice.startsWith('glow-speak:')) {
                   q('#larynx-settings').style.visibility = "visible";
               } else {
                   q('#larynx-settings').style.visibility = "hidden";
+              }
+
+              // Clear speaker ids
+              speaker_id_select = q('#speaker-id')
+              for (var i = speaker_id_select.options.length - 1; i >= 0; i--) {
+                  speaker_id_select.options[i].remove()
+              }
+
+              speakers = voice_speakers[voice]
+              if (speakers) {
+                  $('#speaker-id-div').show()
+                  Object.entries(speakers).forEach(function(si) {
+                      speaker_id_select.insertAdjacentHTML(
+                          'beforeend', '<option value="' + si[0] + '">' + si[0] + " (" + si[1].toString() + ")" + '</option>'
+                      )
+                  })
+
+                  speaker_id_select.selectedIndex = 0
+              } else {
+                  $('#speaker-id-div').hide()
               }
           }
 
@@ -248,6 +278,13 @@
                           voiceList.insertAdjacentHTML(
                               'beforeend', '<option value="' + id + '">' + description + '</option>'
                           )
+
+                          // Set speaker name -> speaker id for multi-speaker models
+                          if (voice.multispeaker && voice.speakers) {
+                              voice_speakers[id] = voice.speakers
+                          } else {
+                              voice_speakers[id] = null
+                          }
                       })
 
                       changeVoice()

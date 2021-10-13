@@ -106,6 +106,13 @@ _TEST_SENTENCES = {
         "Una sola lingua non è mai abbastanza.",
         "Il mio aeroscafo è pieno di anguille!",
     ],
+    "ja": [
+        "はい、元気です。あなたは？",
+        "日本語以外の言語を話しますか",
+        "お誕生日おめでとうございます",
+        "言語を一つは決して足りない",
+        "私のホバークラフトは鰻でいっぱいです",
+        ],
     "kn": [
         "ನಾ ಚಲೋ ಅದೀನಿ, ನೀವು ಹ್ಯಾಂಗದೀರ್’ರಿ?",
         "ಅಥವಾ ನೀವು ಯಾವ ಕಡೆಯವರು?",
@@ -177,6 +184,20 @@ _TEST_SENTENCES = {
         "Yeni yılınızı kutlar, sağlık ve başarılar dileriz",
         "Bir dil asla yeterli değildir",
     ],
+    "vi": [
+        "Một thứ tiếng thì không bao giờ đủ",
+        "Bạn có nói tiếng Việt không?",
+        "Được tiếp đãi ân cần",
+        "Khoẻ, cám ơn. Bạn thì sao?",
+        "Tàu cánh ngầm của tôi đầy lươn",
+    ],
+    "zh": [
+        "一種語言永遠不夠",
+        "我的氣墊船裝滿了鱔魚",
+        "快點好啦",
+        "你要不要跟我跳舞？",
+        "我很高興跟你見面",
+    ],
 }
 
 _LOGGER = logging.getLogger("get_samples")
@@ -247,7 +268,7 @@ def main():
                         + urlencode(
                             {
                                 "voice": voice_id,
-                                "denoiserStrength": "0.001",
+                                "denoiserStrength": "0.01",
                                 "text": text,
                             }
                         ),

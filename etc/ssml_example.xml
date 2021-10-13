@@ -1,0 +1,110 @@
+<speak>
+  Sentences outside any tags are spoken by the selected voice.
+  <s>
+    You can manually separate sentences <w>and</w><w>words</w>.
+  </s>
+
+  <voice name="glow-speak:en-us_mary_ann">
+    <s>
+      The current voice can be changed, even to a different text to speech system!
+    </s>
+  </voice>
+
+  <voice name="en-gb">
+    <s>
+      Default voices exist for all of the supported languages.
+    </s>
+  </voice>
+
+  <voice name="coqui-tts:en_vctk#p228">
+    <s>Breaks are possible</s>
+    <break time="0.5s" />
+    <s>between sentences.</s>
+  </voice>
+
+  <s lang="en-us">
+    The 1st thing to remember is that 27 languages are supported in Open TTS as of 10/13/2021.
+  </s>
+
+  <s lang="ar">
+    لغة واحدة لا تكفي
+  </s>
+  <s lang="bn">
+    একটি ভাষা যথেষ্ট নয়।
+  </s>
+  <s lang="ca">
+    No n'hi ha prou amb una llengua
+  </s>
+  <s lang="cs">
+    Jeden jazyk nikdy nestačí
+  </s>
+  <s lang="de">
+   Eine Sprache ist niemals genug
+  </s>
+  <s lang="el">
+    Μία γλώσσα δεν είναι ποτέ αρκετή
+  </s>
+  <s lang="en">
+    One language is never enough
+  </s>
+  <s lang="es">
+    Un idioma nunca es suficiente
+  </s>
+  <s lang="fi">
+    Yksi kieli ei ikinä riitä
+  </s>
+  <s lang="fr">
+    Une seule langue n'est jamais suffisante
+  </s>
+  <s lang="gu">
+    એક ભાષા ક્યારેય પણ પુરતી નથી
+  </s>
+  <s lang="hi">
+    एक भाषा कभी भी काफ़ी नहीं होती
+  </s>
+  <s lang="hu">
+    Egy nyelv sosem elég
+  </s>
+  <s lang="it">
+    Una sola lingua non è mai abbastanza
+  </s>
+  <s lang="ja">
+    言語を一つは決して足りない
+  </s>
+  <s lang="kn">
+    ಒಂದೇ ಭಾಷೆ ಸಾಲಲ್ಲ ಅಥವಾ ಸಾಲೋದಿಲ್ಲ
+  </s>
+  <s lang="ko">
+    한 가지 언어는 충분하지 못 해
+  </s>
+  <s lang="mr">
+    एकच भाषा कधीच पुरेशी नसते!
+  </s>
+  <s lang="nl">
+    Eén taal is nooit genoeg
+  </s>
+  <s lang="pa">
+    ਮੇਰਾ ਹਵਰਕ੍ਰਾਫ਼ਤ ਨਾਂਗਾਂ ਨਾਲ਼ ਭਰਿਆ ਪਿਆ।
+  </s>
+  <s lang="ru">
+    Одного языка никогда недостаточно
+  </s>
+  <s lang="sv">
+    Ett språk är aldrig nog
+  </s>
+  <s lang="sw">
+    Lugha moja haitoshi
+  </s>
+  <s lang="ta">
+    ஒரு மொழி மட்டும் தெரிந்தால் போதாது
+  </s>
+  <s lang="te">
+    ఒక భాష సరిపోదు
+  </s>
+  <s lang="tr">
+    Bir dil asla yeterli değildir
+  </s>
+  <s lang="zh">
+    一種語言永遠不夠
+  </s>
+</speak>

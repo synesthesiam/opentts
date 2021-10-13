@@ -9,13 +9,14 @@ this_dir="$( cd "$( dirname "$0" )" && pwd )"
 
 . "${this_dir}/etc/shflags"
 
-DEFINE_string 'languages' 'en' 'Language(s) to install (ar,bn,ca,cs,de,en,es,fi,fr,gu,hi,it,kn,mr,nl,pa,ru,sv,sw,ta,te,tr)'
+DEFINE_string 'languages' 'en' 'Language(s) to install (ar,bn,ca,cs,de,en,es,fi,fr,gu,hi,it,ja,kn,ko,mr,nl,pa,ru,sv,sw,ta,te,tr,zh)'
 DEFINE_boolean 'espeak' true 'Enable/disable espeak-ng'
 DEFINE_boolean 'flite' true 'Enable/disable flite'
 DEFINE_boolean 'festival' true 'Enable/disable festival'
 DEFINE_boolean 'marytts' true 'Enable/disable MaryTTS'
 DEFINE_boolean 'larynx' true 'Enable/disable Larynx'
 DEFINE_boolean 'glow_speak' true 'Enable/disable Glow-Speak'
+DEFINE_boolean 'coqui' true 'Enable/disable Coqui-TTS'
 
 FLAGS "$@" || exit $?
 eval set -- "${FLAGS_ARGV}"
@@ -58,6 +59,11 @@ if [[ "${FLAGS_glow_speak}" -eq "${FLAGS_FALSE}" ]]; then
     no_glow_speak='true'
 fi
 
+no_coqui=''
+if [[ "${FLAGS_coqui}" -eq "${FLAGS_FALSE}" ]]; then
+    no_coqui='true'
+fi
+
 # -----------------------------------------------------------------------------
 # Generate Files
 # -----------------------------------------------------------------------------
@@ -72,7 +78,7 @@ LARYNX_PYTHON=('dataclasses-json~=0.5.0' 'numpy>=1.20.0' 'onnxruntime>=1.6.0,<2.
 LARYNX_VOCODERS=('voices/larynx/hifi_gan')
 GLOW_SPEAK_PYTHON=('espeak-phonemizer~=1.0.0' 'onnxruntime>=1.6.0,<2.0' 'phonemes2ids~=1.0.0')
 GLOW_SPEAK_VOCODERS=('voices/glow-speak/hifi-gan_*')
-COQUI_TTS_PYTHON=()
+COQUI_TTS_PYTHON=('anyascii' 'coqpit' 'fsspec>=2021.04.0' 'librosa==0.8.0' 'numpy>=1.19.5' 'pysbd' 'scipy>=0.19.0' 'torch>=1.7')
 
 # Extgra Debian packages installed with apt-get into the Docker image.
 packages=()
@@ -108,6 +114,7 @@ default_language=''
 # hi (Hindi)
 # hu (Hungarian)
 # it (Italian)
+# ja (Japanese)
 # kn (Kannada)
 # ko (Korean)
 # mr (Marathi)
@@ -119,6 +126,7 @@ default_language=''
 # ta (Tamil)
 # te (Telugu)
 # tr (Turkish)
+# zh (Chinese)
 
 for language in "${languages[@]}"; do
     if [[ -z "${default_language}" ]]; then
@@ -205,6 +213,11 @@ for language in "${languages[@]}"; do
             packages+=(${GLOW_SPEAK_PACKAGES[@]})
             keep_paths+=('voices/glow-speak/en-us_*' ${GLOW_SPEAK_VOCODERS[@]})
             python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
+
+        if [[ -z "${no_coqui}" ]]; then
+            keep_paths+=('voices/coqui-tts/en_*')
+            python_packages+=(${COQUI_TTS_PYTHON[@]})
         fi
     elif [[ "${language}" == 'es' ]]; then
         # Spanish
@@ -296,11 +309,18 @@ for language in "${languages[@]}"; do
         fi
 
         python_packages+=('gruut[it]~=2.0.0')
+    elif [[ "${language}" == 'ja' ]]; then
+        # Japanese
+        if [[ -z "${no_coqui}" ]]; then
+            packages+=('libmecab-dev')
+            keep_paths+=('voices/coqui-tts/ja_*')
+            python_packages+=(${COQUI_TTS_PYTHON[@]} 'mecab-python3==1.0.3' 'unidic-lite==1.0.8')
+        fi
     elif [[ "${language}" == 'kn' ]]; then
         # Kannada
         if [[ -z "${no_flite}" ]]; then
             packages+=(${FLITE_PACKAGES[@]})
-            keep_paths+=('voices/flite/cmu_indic_mar_aup.flitevox' 'voices/flite/cmu_indic_mar_slp.flitevox')
+            keep_paths+=('voices/flite/cmu_indic_kan_plv.flitevox')
         fi
     elif [[ "${language}" == 'ko' ]]; then
         # Korean
@@ -424,6 +444,12 @@ for language in "${languages[@]}"; do
         if [[ -z "${no_marytts}" ]]; then
             packages+=(${MARYTTS_PACKAGES[@]})
             keep_paths+=('voices/marytts/tr' ${MARYTTS_JARS[@]})
+        fi
+    elif [[ "${language}" == 'zh' ]]; then
+        # Chinese
+        if [[ -z "${no_coqui}" ]]; then
+            keep_paths+=('voices/coqui-tts/zh_*')
+            python_packages+=(${COQUI_TTS_PYTHON[@]}  'jieba' 'pypinyin')
         fi
     fi
 
