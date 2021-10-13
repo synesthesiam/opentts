@@ -1,0 +1,191 @@
+from typing import Dict, List, Tuple
+
+import torch
+from coqpit import Coqpit
+from torch import nn
+from torch.utils.data import DataLoader
+
+from TTS.model import BaseModel
+from TTS.tts.utils.speakers import SpeakerManager, get_speaker_manager
+from TTS.tts.utils.text import make_symbols
+from TTS.utils.audio import AudioProcessor
+
+# pylint: skip-file
+
+
+class BaseTTS(BaseModel):
+    """Abstract `tts` class. Every new `tts` model must inherit this.
+
+    It defines `tts` specific functions on top of `Model`.
+
+    Notes on input/output tensor shapes:
+        Any input or output tensor of the model must be shaped as
+
+        - 3D tensors `batch x time x channels`
+        - 2D tensors `batch x channels`
+        - 1D tensors `batch x 1`
+    """
+
+    @staticmethod
+    def get_characters(config: Coqpit) -> str:
+        # TODO: implement CharacterProcessor
+        if config.characters is not None:
+            symbols, phonemes = make_symbols(**config.characters)
+        else:
+            from TTS.tts.utils.text.symbols import parse_symbols, phonemes, symbols
+
+            config.characters = parse_symbols()
+        model_characters = phonemes if config.use_phonemes else symbols
+        num_chars = len(model_characters) + getattr(config, "add_blank", False)
+        return model_characters, config, num_chars
+
+    def get_speaker_manager(
+        config: Coqpit, restore_path: str, data: List, out_path: str = None
+    ) -> SpeakerManager:
+        return get_speaker_manager(config, restore_path, data, out_path)
+
+    def init_multispeaker(self, config: Coqpit, data: List = None):
+        """Initialize a speaker embedding layer if needen and define expected embedding channel size for defining
+        `in_channels` size of the connected layers.
+
+        This implementation yields 3 possible outcomes:
+
+        1. If `config.use_speaker_embedding` and `config.use_d_vector_file are False, do nothing.
+        2. If `config.use_d_vector_file` is True, set expected embedding channel size to `config.d_vector_dim` or 512.
+        3. If `config.use_speaker_embedding`, initialize a speaker embedding layer with channel size of
+        `config.d_vector_dim` or 512.
+
+        You can override this function for new models.0
+
+        Args:
+            config (Coqpit): Model configuration.
+            data (List, optional): Dataset items to infer number of speakers. Defaults to None.
+        """
+        # init speaker manager
+        self.speaker_manager = get_speaker_manager(config, data=data)
+
+        # set number of speakers - if num_speakers is set in config, use it, otherwise use speaker_manager
+        if data is not None or self.speaker_manager.speaker_ids:
+            self.num_speakers = self.speaker_manager.num_speakers
+        else:
+            self.num_speakers = (
+                config.num_speakers
+                if "num_speakers" in config and config.num_speakers != 0
+                else self.speaker_manager.num_speakers
+            )
+
+        # set ultimate speaker embedding size
+        if config.use_speaker_embedding or config.use_d_vector_file:
+            self.embedded_speaker_dim = (
+                config.d_vector_dim
+                if "d_vector_dim" in config and config.d_vector_dim is not None
+                else 512
+            )
+        # init speaker embedding layer
+        if config.use_speaker_embedding and not config.use_d_vector_file:
+            self.speaker_embedding = nn.Embedding(
+                self.num_speakers, self.embedded_speaker_dim
+            )
+            self.speaker_embedding.weight.data.normal_(0, 0.3)
+
+    def get_aux_input(self, **kwargs) -> Dict:
+        """Prepare and return `aux_input` used by `forward()`"""
+        return {"speaker_id": None, "style_wav": None, "d_vector": None}
+
+    def format_batch(self, batch: Dict) -> Dict:
+        """Generic batch formatting for `TTSDataset`.
+
+        You must override this if you use a custom dataset.
+
+        Args:
+            batch (Dict): [description]
+
+        Returns:
+            Dict: [description]
+        """
+        # setup input batch
+        text_input = batch["text"]
+        text_lengths = batch["text_lengths"]
+        speaker_names = batch["speaker_names"]
+        linear_input = batch["linear"]
+        mel_input = batch["mel"]
+        mel_lengths = batch["mel_lengths"]
+        stop_targets = batch["stop_targets"]
+        item_idx = batch["item_idxs"]
+        d_vectors = batch["d_vectors"]
+        speaker_ids = batch["speaker_ids"]
+        attn_mask = batch["attns"]
+        waveform = batch["waveform"]
+        pitch = batch["pitch"]
+        max_text_length = torch.max(text_lengths.float())
+        max_spec_length = torch.max(mel_lengths.float())
+
+        # compute durations from attention masks
+        durations = None
+        if attn_mask is not None:
+            durations = torch.zeros(attn_mask.shape[0], attn_mask.shape[2])
+            for idx, am in enumerate(attn_mask):
+                # compute raw durations
+                c_idxs = am[:, : text_lengths[idx], : mel_lengths[idx]].max(1)[1]
+                # c_idxs, counts = torch.unique_consecutive(c_idxs, return_counts=True)
+                c_idxs, counts = torch.unique(c_idxs, return_counts=True)
+                dur = torch.ones([text_lengths[idx]]).to(counts.dtype)
+                dur[c_idxs] = counts
+                # smooth the durations and set any 0 duration to 1
+                # by cutting off from the largest duration indeces.
+                extra_frames = dur.sum() - mel_lengths[idx]
+                largest_idxs = torch.argsort(-dur)[:extra_frames]
+                dur[largest_idxs] -= 1
+                assert (
+                    dur.sum() == mel_lengths[idx]
+                ), f" [!] total duration {dur.sum()} vs spectrogram length {mel_lengths[idx]}"
+                durations[idx, : text_lengths[idx]] = dur
+
+        # set stop targets wrt reduction factor
+        stop_targets = stop_targets.view(
+            text_input.shape[0], stop_targets.size(1) // self.config.r, -1
+        )
+        stop_targets = (stop_targets.sum(2) > 0.0).unsqueeze(2).float().squeeze(2)
+        stop_target_lengths = torch.divide(mel_lengths, self.config.r).ceil_()
+
+        return {
+            "text_input": text_input,
+            "text_lengths": text_lengths,
+            "speaker_names": speaker_names,
+            "mel_input": mel_input,
+            "mel_lengths": mel_lengths,
+            "linear_input": linear_input,
+            "stop_targets": stop_targets,
+            "stop_target_lengths": stop_target_lengths,
+            "attn_mask": attn_mask,
+            "durations": durations,
+            "speaker_ids": speaker_ids,
+            "d_vectors": d_vectors,
+            "max_text_length": float(max_text_length),
+            "max_spec_length": float(max_spec_length),
+            "item_idx": item_idx,
+            "waveform": waveform,
+            "pitch": pitch,
+        }
+
+    def get_data_loader(
+        self,
+        config: Coqpit,
+        ap: AudioProcessor,
+        is_eval: bool,
+        data_items: List,
+        verbose: bool,
+        num_gpus: int,
+        rank: int = None,
+    ) -> "DataLoader":
+        raise NotImplementedError()
+
+    def test_run(self, ap) -> Tuple[Dict, Dict]:
+        """Generic test run for `tts` models used by `Trainer`.
+
+        You can override this for a different behaviour.
+
+        Returns:
+            Tuple[Dict, Dict]: Test figures and audios to be projected to Tensorboard.
+        """
+        raise NotImplementedError()

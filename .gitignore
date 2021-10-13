@@ -4,6 +4,8 @@ __pycache__/
 
 /download/
 /voices/larynx/
+/voices/glow-speak/
+/voices/coqui-tts/
 /log/
 
 .dockerignore

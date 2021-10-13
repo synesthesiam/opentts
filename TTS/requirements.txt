@@ -1,0 +1,20 @@
+coqpit
+fsspec>=2021.04.0
+librosa==0.8.0
+numpy>=1.19.5
+pysbd
+scipy>=0.19.0
+torch>=1.7
+# japanese g2p deps
+mecab-python3==1.0.3
+unidic-lite==1.0.8
+# chinese deps
+jieba
+pypinyin
+
+inflect
+pyyaml
+soundfile
+numba==0.53
+umap-learn==0.5.1
+# gruut+supported langs

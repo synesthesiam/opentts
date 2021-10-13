@@ -34,3 +34,6 @@ disable=
 
 [FORMAT]
 expected-line-ending-format=LF
+
+[MASTER]
+ignore=TTS

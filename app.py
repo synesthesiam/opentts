@@ -31,6 +31,7 @@ from swagger_ui import api_doc
 
 import gruut
 from tts import (
+    CoquiTTS,
     EspeakTTS,
     FestivalTTS,
     FliteTTS,
@@ -80,6 +81,7 @@ parser.add_argument("--no-nanotts", action="store_true", help="Don't use nanotts
 parser.add_argument("--no-marytts", action="store_true", help="Don't use MaryTTS")
 parser.add_argument("--no-larynx", action="store_true", help="Don't use Larynx")
 parser.add_argument("--no-glow-speak", action="store_true", help="Don't use Glow-Speak")
+parser.add_argument("--no-coqui", action="store_true", help="Don't use CoquiTTS")
 parser.add_argument(
     "--cache",
     nargs="?",
@@ -218,6 +220,18 @@ if not args.no_glow_speak:
 
     if glow_speak_available:
         _TTS["glow-speak"] = GlowSpeakTTS(models_dir=(_VOICES_DIR / "glow-speak"))
+
+# Coqui-TTS
+if not args.no_coqui:
+    try:
+        import TTS  # noqa: F401
+
+        coqui_available = True
+    except Exception:
+        coqui_available = False
+
+    if coqui_available:
+        _TTS["coqui-tts"] = CoquiTTS(models_dir=(_VOICES_DIR / "coqui-tts"))
 
 _LOGGER.debug("Loaded TTS systems: %s", ", ".join(_TTS.keys()))
 

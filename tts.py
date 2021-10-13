@@ -1587,3 +1587,68 @@ class GlowSpeakTTS(TTSBase):
             sample_bytes=vocoder_model.sample_bytes,
             channels=vocoder_model.channels,
         )
+
+
+# -----------------------------------------------------------------------------
+
+
+class CoquiTTS(TTSBase):
+    """Wraps Coqui TTS (https://github.com/coqui-ai/TTS)"""
+
+    def __init__(self, models_dir: typing.Union[str, Path]):
+        self.models_dir = Path(models_dir)
+
+        self.synthesizers: typing.Dict[str, typing.Any] = {}
+
+        self.tts_voices = {
+            # ja
+            "ja_kokoro": Voice(
+                id="ja_kokoro",
+                name="kokoro",
+                locale="ja-ja",
+                language="ja",
+                gender="M",
+            ),
+            # zh
+            "zh_baker": Voice(
+                id="zh_baker", name="baker", locale="zh-cn", language="zh", gender="F",
+            ),
+        }
+
+    async def voices(self) -> VoicesIterable:
+        """Get list of available voices."""
+        for voice in self.tts_voices.values():
+            model_path = self.models_dir / voice.id
+            if model_path.exists():
+                yield voice
+
+    async def say(self, text: str, voice_id: str, **kwargs) -> bytes:
+        """Speak text as WAV."""
+
+        # Run text to speech
+        from TTS.utils.synthesizer import Synthesizer
+
+        voice = self.tts_voices.get(voice_id)
+        assert voice is not None, f"No Coqui-TTS voice {voice_id}"
+
+        synthesizer = self.synthesizers.get(voice.id)
+        if synthesizer is None:
+            voice_dir = self.models_dir / voice.id
+            vocoder_dir = voice_dir / "vocoder"
+
+            synthesizer = Synthesizer(
+                tts_checkpoint=str(voice_dir / "model_file.pth.tar"),
+                tts_config_path=str(voice_dir / "config.json"),
+                vocoder_checkpoint=str(vocoder_dir / "model_file.pth.tar"),
+                vocoder_config=str(vocoder_dir / "config.json"),
+            )
+
+            self.synthesizers[voice.id] = synthesizer
+
+        assert synthesizer is not None
+        audio = synthesizer.tts(text)
+
+        with io.BytesIO() as wav_io:
+            synthesizer.save_wav(audio, wav_io)  # type: ignore
+
+            return wav_io.getvalue()
