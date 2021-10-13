@@ -1,5 +1,8 @@
 import re
 
+from anyascii import anyascii
+
+import gruut
 from TTS.tts.utils.text.chinese_mandarin.numbers import (
     replace_numbers_to_characters_in_text,
 )
@@ -14,6 +17,10 @@ def lowercase(text):
 
 def collapse_whitespace(text):
     return re.sub(_whitespace_re, " ", text).strip()
+
+
+def convert_to_ascii(text):
+    return anyascii(text)
 
 
 def remove_aux_symbols(text):
@@ -65,6 +72,20 @@ def basic_turkish_cleaners(text):
     return text
 
 
+def english_cleaners(text):
+    """Pipeline for English text, including number and abbreviation expansion."""
+    text = convert_to_ascii(text)
+    text = "".join(
+        s.text_with_ws for s in gruut.sentences(text, lang="en_US", phonemes=False)
+    )
+
+    text = lowercase(text)
+    text = replace_symbols(text)
+    text = remove_aux_symbols(text)
+    text = collapse_whitespace(text)
+    return text
+
+
 def portuguese_cleaners(text):
     """Basic pipeline for Portuguese text. There is no need to expand abbreviation and
     numbers, phonemizer already does that"""
@@ -78,4 +99,12 @@ def portuguese_cleaners(text):
 def chinese_mandarin_cleaners(text: str) -> str:
     """Basic pipeline for chinese"""
     text = replace_numbers_to_characters_in_text(text)
+    return text
+
+
+def phoneme_cleaners(text):
+    """Pipeline for phonemes mode, including number and abbreviation expansion."""
+    text = replace_symbols(text)
+    text = remove_aux_symbols(text)
+    text = collapse_whitespace(text)
     return text

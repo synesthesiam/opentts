@@ -256,6 +256,7 @@ async def text_to_wav(
     denoiser_strength: typing.Optional[float] = None,
     noise_scale: typing.Optional[float] = None,
     length_scale: typing.Optional[float] = None,
+    speaker_id: typing.Optional[int] = None,
     use_cache: bool = True,
     ssml: bool = False,
     ssml_args: typing.Optional[typing.Dict[str, typing.Any]] = None,
@@ -296,6 +297,7 @@ async def text_to_wav(
             default_voice=voice,
             default_lang=lang,
             ssml_args=ssml_args,
+            speaker_id=speaker_id,
             # Larynx settings
             vocoder=vocoder,
             denoiser_strength=denoiser_strength,
@@ -306,6 +308,7 @@ async def text_to_wav(
         wavs_gen = text_to_wavs(
             text=text,
             voice=voice,
+            speaker_id=speaker_id,
             # Larynx settings
             vocoder=vocoder,
             denoiser_strength=denoiser_strength,
@@ -614,6 +617,10 @@ async def app_say() -> Response:
     if length_scale is not None:
         length_scale = float(length_scale)
 
+    speaker_id = str(request.args.get("speakerId", ""))
+    if speaker_id:
+        speaker_id = int(speaker_id)
+
     # SSML settings
     ssml = convert_bool(request.args.get("ssml", "false"))
     ssml_numbers = convert_bool(request.args.get("ssmlNumbers", "false"))
@@ -634,6 +641,7 @@ async def app_say() -> Response:
         denoiser_strength=denoiser_strength,
         noise_scale=noise_scale,
         length_scale=length_scale,
+        speaker_id=speaker_id,
         use_cache=use_cache,
         ssml=ssml,
         ssml_args=ssml_args,

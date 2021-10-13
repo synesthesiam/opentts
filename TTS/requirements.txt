@@ -1,3 +1,4 @@
+anyascii
 coqpit
 fsspec>=2021.04.0
 librosa==0.8.0
@@ -11,10 +12,3 @@ unidic-lite==1.0.8
 # chinese deps
 jieba
 pypinyin
-
-inflect
-pyyaml
-soundfile
-numba==0.53
-umap-learn==0.5.1
-# gruut+supported langs

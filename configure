@@ -72,6 +72,7 @@ LARYNX_PYTHON=('dataclasses-json~=0.5.0' 'numpy>=1.20.0' 'onnxruntime>=1.6.0,<2.
 LARYNX_VOCODERS=('voices/larynx/hifi_gan')
 GLOW_SPEAK_PYTHON=('espeak-phonemizer~=1.0.0' 'onnxruntime>=1.6.0,<2.0' 'phonemes2ids~=1.0.0')
 GLOW_SPEAK_VOCODERS=('voices/glow-speak/hifi-gan_*')
+COQUI_TTS_PYTHON=()
 
 # Extgra Debian packages installed with apt-get into the Docker image.
 packages=()

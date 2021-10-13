@@ -5,6 +5,7 @@ import re
 from typing import Dict, List
 
 import gruut
+from gruut_ipa import IPA
 from TTS.tts.utils.text import cleaners
 from TTS.tts.utils.text.chinese_mandarin.phonemizer import chinese_text_to_phonemes
 from TTS.tts.utils.text.japanese.phonemizer import japanese_text_to_phonemes
@@ -52,31 +53,32 @@ def text2phone(text, language, use_espeak_phonemes=False):
 
     if gruut.is_language_supported(language):
         # Use gruut for phonemization
-        phonemizer_args = {
-            "remove_stress": True,
-            "ipa_minor_breaks": False,  # don't replace commas/semi-colons with IPA |
-            "ipa_major_breaks": False,  # don't replace periods with IPA ‖
-        }
+        ph_list = []
+        for sentence in gruut.sentences(
+            text, lang=language, espeak=use_espeak_phonemes
+        ):
+            for word in sentence:
+                if word.is_break:
+                    # Use actual character for break phoneme (e.g., comma)
+                    ph_list.append([word.text_with_ws])
+                elif word.phonemes:
+                    # Remove stress from word phonemes
+                    word_phonemes = []
 
-        if use_espeak_phonemes:
-            # Use a lexicon/g2p model train on eSpeak IPA instead of gruut IPA.
-            # This is intended for backwards compatibility with TTS<=v0.0.13
-            # pre-trained models.
-            phonemizer_args["model_prefix"] = "espeak"
+                    for word_phoneme in word.phonemes:
+                        word_phonemes.append(
+                            IPA.without_stress(word_phoneme).translate(
+                                GRUUT_TRANS_TABLE
+                            )
+                        )
 
-        ph_list = gruut.text_to_phonemes(
-            text,
-            lang=language,
-            return_format="word_phonemes",
-            phonemizer_args=phonemizer_args,
-        )
+                    if word_phonemes:
+                        ph_list.append(word_phonemes)
 
         # Join and re-split to break apart dipthongs, suprasegmentals, etc.
         ph_words = ["|".join(word_phonemes) for word_phonemes in ph_list]
         ph = "| ".join(ph_words)
 
-        # Fix a few phonemes
-        ph = ph.translate(GRUUT_TRANS_TABLE)
         return ph
 
     raise ValueError(f" [!] Language {language} is not supported for phonemization.")

@@ -9,7 +9,6 @@ import torch
 from TTS.config import load_config
 from TTS.tts.models import setup_model as setup_tts_model
 from TTS.tts.utils.speakers import SpeakerManager
-
 # pylint: disable=unused-wildcard-import
 # pylint: disable=wildcard-import
 from TTS.tts.utils.synthesis import synthesis, trim_silence
@@ -248,7 +247,9 @@ class Synthesizer(object):
         # handle multi-speaker
         speaker_embedding = None
         speaker_id = None
-        if self.tts_speakers_file:
+        if isinstance(speaker_idx, int):
+            speaker_id = speaker_idx
+        elif self.tts_speakers_file:
             if speaker_idx and isinstance(speaker_idx, str):
                 if self.tts_config.use_d_vector_file:
                     # get the speaker embedding from the saved d_vectors.
