@@ -458,9 +458,10 @@ async def text_to_wavs(
         if not line:
             continue
 
-        _LOGGER.debug("Synthesizing line %s (%s char(s))", line_index + 1, len(line))
+        _LOGGER.debug("Synthesizing line %s: %s", line_index + 1, line)
         line_wav_bytes = await tts.say(line, voice_id, **say_args)
-        assert line_wav_bytes, f"No WAV audio from line: {line}"
+
+        assert line_wav_bytes, f"No WAV audio from line: {line_index+1}"
         _LOGGER.debug(
             "Got %s WAV byte(s) for line %s", len(line_wav_bytes), line_index + 1,
         )

@@ -1,27 +1,10 @@
 # -----------------------------------------------------------------------------
 # Dockerfile for OpenTTS (https://github.com/synesthesiam/opentts)
+#
 # Requires Docker buildx: https://docs.docker.com/buildx/working-with-buildx/
 # -----------------------------------------------------------------------------
 
-FROM debian:bullseye as build-amd64
-
-FROM debian:bullseye as build-arm64
-
-FROM debian:bullseye as build-armv7
-
-# All for librosa
-RUN --mount=type=cache,id=apt-build-armv7,target=/var/cache/apt \
-    apt-get update && \
-    apt-get install --no-install-recommends --yes \
-        llvm-9-dev libopenblas-dev gfortran
-
-ENV LLVM_CONFIG=/usr/bin/llvm-config-9
-
-# -----------------------------------------------------------------------------
-
-ARG TARGETARCH
-ARG TARGETVARIANT
-FROM build-$TARGETARCH$TARGETVARIANT as build
+FROM debian:bullseye as build
 ARG TARGETARCH
 ARG TARGETVARIANT
 
@@ -42,17 +25,19 @@ WORKDIR /app
 
 # Create virtual environment
 RUN --mount=type=cache,id=pip-venv,target=/root/.cache/pip \
-    python3 -m venv .venv && \
+    python3 -m venv --system-site-packages .venv && \
     .venv/bin/pip3 install --upgrade pip && \
     .venv/bin/pip3 install --upgrade wheel setuptools
 
+# Put cached Python wheels here
 COPY download/ /download/
 
+# Install base Python requirements
 COPY requirements.txt /requirements.txt
-
 RUN --mount=type=cache,id=pip-requirements,target=/root/.cache/pip \
     .venv/bin/pip3 install -f /download -r /requirements.txt
 
+# Install extra Python packages added from ./configure
 COPY python_packages /python_packages
 RUN --mount=type=cache,id=pip-extras,target=/root/.cache/pip \
     if [ -s /python_packages ]; then \
@@ -64,15 +49,7 @@ RUN --mount=type=cache,id=pip-extras,target=/root/.cache/pip \
 
 # -----------------------------------------------------------------------------
 
-FROM debian:bullseye as run-amd64
-
-FROM debian:bullseye as run-arm64
-
-FROM debian:buster as run-armv7
-
-ARG TARGETARCH
-ARG TARGETVARIANT
-FROM run-$TARGETARCH$TARGETVARIANT as run
+FROM debian:bullseye as run
 ARG TARGETARCH
 ARG TARGETVARIANT
 
@@ -83,6 +60,7 @@ COPY packages /packages
 
 RUN echo 'deb http://deb.debian.org/debian bullseye contrib non-free' > /etc/apt/sources.list.d/contrib.list
 
+# Install extra Debian packages added from ./configure
 RUN echo "Dir::Cache var/cache/apt/${TARGETARCH}${TARGETVARIANT};" > /etc/apt/apt.conf.d/01cache
 RUN --mount=type=cache,id=apt-run,target=/var/cache/apt \
     mkdir -p /var/cache/apt/${TARGETARCH}${TARGETVARIANT}/archives/partial && \

@@ -47,7 +47,7 @@ def text_to_ids(
     )
 
     # Ensure full stop at the end
-    if ipa_str[-1] != ".":
+    if ipa_str and (ipa_str[-1] != "."):
         ipa_str += " ."
 
     _LOGGER.debug(ipa_str)
