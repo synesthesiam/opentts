@@ -16,7 +16,7 @@ RUN --mount=type=cache,id=apt-build,target=/var/cache/apt \
     mkdir -p /var/cache/apt/${TARGETARCH}${TARGETVARIANT}/archives/partial && \
     apt-get update && \
     apt-get install --yes --no-install-recommends \
-        build-essential python3 python3-venv python3-dev
+        build-essential python3 python3-venv python3-dev llvm-dev
 
 # Clean up
 RUN rm -f /etc/apt/apt.conf.d/01cache
