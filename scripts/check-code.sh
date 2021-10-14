@@ -10,13 +10,13 @@ if [[ -d "${venv}" ]]; then
     source "${venv}/bin/activate"
 fi
 
-python_files=("${src_dir}/"*.py "${src_dir}/glow_speak" "${src_dir}/larynx"  "${src_dir}/TTS")
+python_files=("${src_dir}/"*.py "${src_dir}/glow_speak" "${src_dir}/larynx")
 
 # -----------------------------------------------------------------------------
 
-# flake8 "${python_files[@]}"
-# pylint "${python_files[@]}"
-# mypy "${python_files[@]}"
+flake8 "${python_files[@]}" "${src_dir}/TTS"
+pylint "${python_files[@]}" "${src_dir}/TTS"
+mypy "${python_files[@]}"
 black --check "${python_files[@]}"
 isort --check-only "${python_files[@]}"
 

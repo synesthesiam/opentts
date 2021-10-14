@@ -171,7 +171,7 @@ class Synthesizer(object):
             self.tts_config["audio"]["stats_path"] = stats_path
 
         # Patch speakers file
-        speakers_file = self.tts_config["model_args"].get("speakers_file", "")
+        speakers_file = self.tts_config.get("model_args", {}).get("speakers_file", "")
         if speakers_file and (not os.path.isfile(speakers_file)):
             speakers_file = os.path.join(
                 os.path.dirname(tts_checkpoint), os.path.split(speakers_file)[1]
@@ -269,7 +269,9 @@ class Synthesizer(object):
                 else:
                     # get speaker idx from the speaker name
                     try:
-                        speaker_id = self.tts_model.speaker_manager.speaker_ids[speaker_idx]
+                        speaker_id = self.tts_model.speaker_manager.speaker_ids[
+                            speaker_idx
+                        ]
                     except KeyError:
                         # Interpet as int
                         speaker_id = int(speaker_idx)

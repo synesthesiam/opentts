@@ -1,6 +1,5 @@
 import math
 from dataclasses import dataclass, field
-from itertools import chain
 from typing import Dict, List, Tuple
 
 import torch
@@ -27,10 +26,8 @@ from TTS.tts.utils.helpers import (
     sequence_mask,
 )
 from TTS.tts.utils.speakers import get_speaker_manager
-from TTS.tts.utils.synthesis import synthesis
 from TTS.utils.audio import AudioProcessor
 from TTS.vocoder.models.hifigan_generator import HifiganGenerator
-from TTS.vocoder.utils.generic_utils import plot_results
 
 
 @dataclass
@@ -717,7 +714,7 @@ class Vits(BaseTTS):
 
             config.characters = parse_symbols()
             if config.use_phonemes:
-                symbols = phonemes
+                symbols = phonemes  # noqa: F811
         num_chars = len(symbols) + getattr(config, "add_blank", False)
         return symbols, config, num_chars
 

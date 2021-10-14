@@ -65,7 +65,10 @@ def text2phone(text, language, use_espeak_phonemes=False):
             for word in sentence:
                 if word.is_break:
                     # Use actual character for break phoneme (e.g., comma)
-                    ph_list.append([word.text_with_ws])
+                    if ph_list:
+                        ph_list[-1].append(word.text)
+                    else:
+                        ph_list.append([word.text])
                 elif word.phonemes:
                     # Remove stress from word phonemes
                     word_phonemes = []

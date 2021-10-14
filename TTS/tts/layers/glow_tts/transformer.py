@@ -348,7 +348,7 @@ class FeedForwardNetwork(nn.Module):
 
     @staticmethod
     def _pad_shape(padding):
-        l = padding[::-1]
+        l = padding[::-1]  # noqa: E741
         pad_shape = [item for sublist in l for item in sublist]
         return pad_shape
 

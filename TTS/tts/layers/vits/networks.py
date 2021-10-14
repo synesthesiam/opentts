@@ -11,7 +11,7 @@ LRELU_SLOPE = 0.1
 
 
 def convert_pad_shape(pad_shape):
-    l = pad_shape[::-1]
+    l = pad_shape[::-1]  # noqa: E741
     pad_shape = [item for sublist in l for item in sublist]
     return pad_shape
 

@@ -6,7 +6,7 @@ Supports a [subset of SSML](#ssml) that can use multiple voices, text to speech 
 
 ``` xml
 <speak>
-  The 1st thing to remember is that 27 languages are supported in Open TTS as of 10/13/2021.
+  The 1st thing to remember is that 27 languages are supported in Open TTS as of 10/13/2021 at 3pm.
 
   <voice name="glow-speak:en-us_mary_ann">
     <s>
@@ -281,6 +281,8 @@ docker buildx create --config /etc/docker/buildx.conf --use --name mybuilder
 docker buildx use mybuilder
 docker buildx inspect --bootstrap
 ```
+
+**NOTE:** For some reason, you have to do these steps *each time you reboot*. If you see errors like "Error while loading /usr/sbin/dpkg-split: No such file or directory", run `docker buildx rm mybuilder` and re-run the steps above.
 
 When you run `make`, specify the platform(s) you want to build for:
 

@@ -1703,7 +1703,7 @@ class CoquiTTS(TTSBase):
         if text and (text[-1] not in {".", "?", "!"}):
             text = text + "."
 
-        audio = synthesizer.tts(text, speaker_idx=speaker_id)
+        audio = synthesizer.tts(text, speaker_idx=speaker_id)  # type: ignore
 
         with io.BytesIO() as wav_io:
             synthesizer.save_wav(audio, wav_io)  # type: ignore
