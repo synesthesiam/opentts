@@ -1,10 +1,14 @@
 .PHONY: check reformat venv
 .SHELL := bash
 
-DOCKER_PLATFORMS ?= linux/amd64
-DOCKER_TAG ?= synesthesiam/opentts
+ # --platform linux/amd64
+DOCKER_PLATFORMS ?=
+
+# --push
 DOCKER_PUSH ?=
-DOCKER_BUILD ?= docker buildx build . -f Dockerfile --platform $(DOCKER_PLATFORMS) $(DOCKER_PUSH)
+
+DOCKER_TAG ?= synesthesiam/opentts
+DOCKER_BUILD ?= docker buildx build . -f Dockerfile $(DOCKER_PLATFORMS) $(DOCKER_PUSH)
 DOCKER_RUN ?= docker run -it -p 5500:5500
 RUN_ARGS ?= --debug
 

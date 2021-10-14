@@ -1,0 +1,5 @@
+sample_1|Hyvää kiitos, entä sinulle?
+sample_2|Puhutteko suomen lisäksi jotain muuta kieltä?
+sample_3|Haluaisitko tanssia kanssani?
+sample_4|Yksi kieli ei koskaan riitä.
+sample_5|Ilmatyynyalukseni on täynnä ankeriaita.

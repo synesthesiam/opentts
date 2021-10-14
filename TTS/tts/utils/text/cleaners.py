@@ -3,9 +3,6 @@ import re
 from anyascii import anyascii
 
 import gruut
-from TTS.tts.utils.text.chinese_mandarin.numbers import (
-    replace_numbers_to_characters_in_text,
-)
 
 # Regular expression matching whitespace:
 _whitespace_re = re.compile(r"\s+")
@@ -98,6 +95,10 @@ def portuguese_cleaners(text):
 
 def chinese_mandarin_cleaners(text: str) -> str:
     """Basic pipeline for chinese"""
+    from TTS.tts.utils.text.chinese_mandarin.numbers import (
+        replace_numbers_to_characters_in_text,
+    )
+
     text = replace_numbers_to_characters_in_text(text)
     return text
 

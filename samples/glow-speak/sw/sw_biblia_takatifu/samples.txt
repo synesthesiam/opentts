@@ -1,0 +1,5 @@
+sample_1|Nakutakia siku njema!
+sample_2|Lugha moja haitoshi.
+sample_3|Nimefurahi kukutana nawe.
+sample_4|Unazungumza Kiswahili?
+sample_5|Gari langu linaloangama limejaa na mikunga.

@@ -1,6 +1,41 @@
 # Open Text to Speech Server
 
-Unifies access to multiple open source text to speech systems and voices for many languages.
+Unifies access to multiple open source text to speech systems and voices for [many languages](#running).
+
+Supports a [subset of SSML](#ssml) that can use multiple voices, text to speech systems, and languages!
+
+``` xml
+<speak>
+  The 1st thing to remember is that 27 languages are supported in Open TTS as of 10/13/2021.
+
+  <voice name="glow-speak:en-us_mary_ann">
+    <s>
+      The current voice can be changed, even to a different text to speech system!
+    </s>
+  </voice>
+
+  <voice name="coqui-tts:en_vctk#p228">
+    <s>Breaks are possible</s>
+    <break time="0.5s" />
+    <s>between sentences.</s>
+  </voice>
+
+  <s lang="en">
+    One language is never enough
+  </s>
+  <s lang="de">
+   Eine Sprache ist niemals genug
+  </s>
+  <s lang="ja">
+    言語を一つは決して足りない
+  </s>
+  <s lang="sw">
+    Lugha moja haitoshi
+  </s>
+</speak>
+```
+
+See the [full SSML example](https://github.com/synesthesiam/opentts/blob/master/etc/ssml_example.xml)
 
 [Listen to voice samples](https://synesthesiam.github.io/opentts/)
 
@@ -12,12 +47,14 @@ Unifies access to multiple open source text to speech systems and voices for man
     * English (27), German (7), French (3), Spanish (2), Dutch (4), Russian (3), Swedish (1), Italian (2), Swahili (1)
     * Model types available: [GlowTTS](https://github.com/rhasspy/glow-tts-train)
     * Vocoders available: [HiFi-Gan](https://github.com/rhasspy/hifi-gan-train) (3 levels of quality)
+    * Patched embedded version of Larynx 1.0
 * [Glow-Speak](https://github.com/rhasspy/glow-speak)
     * English (2), German (1), French (1), Spanish (1), Dutch (1), Russian (1), Swedish (1), Italian (1), Swahili (1), Greek (1), Finnish (1), Hungarian (1), Korean (1)
     * Model types available: [GlowTTS](https://github.com/rhasspy/glow-tts-train)
     * Vocoders available: [HiFi-Gan](https://github.com/rhasspy/hifi-gan-train) (3 levels of quality)
 * [Coqui-TTS](https://github.com/coqui-ai/TTS)
     * English (110), Japanese (1), Chinese (1)
+    * Patched embedded version of Coqui-TTS 0.3.1
 * [nanoTTS](https://github.com/gmn/nanotts)
     * English (2), German (1), French (1), Italian (1), Spanish (1)
 * [MaryTTS](http://mary.dfki.de)
@@ -125,6 +162,28 @@ See [swagger.yaml](swagger.yaml)
     * Filter languages using query parameters:
         * `?tts_name` - only text to speech system(s)
 
+## SSML
+
+A subset of [SSML](https://www.w3.org/TR/speech-synthesis11/) is supported:
+
+* `<speak>` - wrap around SSML text
+    * `lang` - set language for document
+* `<s>` - sentence (disables automatic sentence breaking)
+    * `lang` - set language for sentence
+* `<w>` / `<token>` - word (disables automatic tokenization)
+* `<voice name="...">` - set voice of inner text
+    * `voice` - name or language of voice
+        * Name format is `tts:voice` (e.g., "glow-speak:en-us_mary_ann") or `tts:voice#speaker_id` (e.g., "coqui-tts:en_vctk#p228")
+        * If one of the supported languages, a preferred voice is used (override with `--preferred-voice <lang> <voice>`)
+* `<say-as interpret-as="">` - force interpretation of inner text
+    * `interpret-as` one of "spell-out", "date", "number", or "currency"
+    * `format` - way to format text depending on `interpret-as`
+        * number - one of "cardinal", "ordinal", "digits", "year"
+        * date - string with "d" (cardinal day), "o" (ordinal day), "m" (month), or "y" (year)
+* `<break time="">` - Pause for given amount of time
+    * time - seconds ("123s") or milliseconds ("123ms")
+* `<sub alias="">` - substitute `alias` for inner text
+
 ## MaryTTS Compatible Endpoint
 
 Use OpenTTS as a drop-in replacement for [MaryTTS](http://mary.dfki.de/).
@@ -174,3 +233,60 @@ Default settings for [Larynx](https://github.com/rhasspy/larynx) can be provided
 * `--larynx-quality` - vocoder quality ("high", "medium", or "low", default: "high")
 * `--larynx-noise-scale` - voice volatility (0-1, default: 0.333)
 * `--larynx-length-scale` - voice speed (< 1 is faster, default: 1.0)
+
+---
+
+## Building From Source
+
+OpenTTS uses [Docker buildx](https://docs.docker.com/buildx/working-with-buildx/) to build multi-platform images based on [Debian bullseye](https://www.debian.org/releases/bullseye/).
+
+If you only plan to build an image for your current platform, you should be able to run:
+
+``` sh
+make <lang>
+```
+
+from the root of the cloned repository, where `<lang>` is one of the [supported languages](#running). If it builds successfully, you can run it with:
+
+``` sh
+make <lang>-run
+```
+
+For example, the English image can be built and run with:
+
+``` sh
+make en
+make en-run
+```
+
+Under the hood, this does two things:
+
+1. Runs the `configure` script with `--languages <lang>`
+2. Runs `docker buildx build` with the appropriate arguments
+
+You can manually run the `configure` script -- see `./configure --help` for more options. This script generates the following files (used by the build process):
+
+* packages - Debian packages installed with `apt-get`
+* python_packages - Python packages installed with `pip`
+* .dockerignore - Files that docker will ignore during building ("!" inverts)
+* .dockerargs - Command-line arguments passed to `docker buildx build`
+
+### Multi-Platform images
+
+To build an image for a different platform, you need to initialize a docker buildx builder:
+
+``` sh
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+docker buildx create --config /etc/docker/buildx.conf --use --name mybuilder
+docker buildx use mybuilder
+docker buildx inspect --bootstrap
+```
+
+When you run `make`, specify the platform(s) you want to build for:
+
+``` sh
+DOCKER_PLATFORMS='--platform linux/amd64,linux/arm64,linux/arm/v7' make <lang>
+```
+
+You may place pre-compiled Python wheels in the `download` directory. They will be used during the installation of Python packages.
+

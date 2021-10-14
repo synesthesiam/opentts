@@ -8,7 +8,6 @@ import argparse
 import json
 import logging
 import subprocess
-import sys
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -112,7 +111,7 @@ _TEST_SENTENCES = {
         "お誕生日おめでとうございます",
         "言語を一つは決して足りない",
         "私のホバークラフトは鰻でいっぱいです",
-        ],
+    ],
     "kn": [
         "ನಾ ಚಲೋ ಅದೀನಿ, ನೀವು ಹ್ಯಾಂಗದೀರ್’ರಿ?",
         "ಅಥವಾ ನೀವು ಯಾವ ಕಡೆಯವರು?",
@@ -191,13 +190,7 @@ _TEST_SENTENCES = {
         "Khoẻ, cám ơn. Bạn thì sao?",
         "Tàu cánh ngầm của tôi đầy lươn",
     ],
-    "zh": [
-        "一種語言永遠不夠",
-        "我的氣墊船裝滿了鱔魚",
-        "快點好啦",
-        "你要不要跟我跳舞？",
-        "我很高興跟你見面",
-    ],
+    "zh": ["一種語言永遠不夠", "我的氣墊船裝滿了鱔魚", "快點好啦", "你要不要跟我跳舞？", "我很高興跟你見面",],
 }
 
 _LOGGER = logging.getLogger("get_samples")
@@ -248,7 +241,7 @@ def main():
         voice_dir.mkdir(parents=True, exist_ok=True)
 
         sample_key_path = voice_dir / "samples.txt"
-        with open(sample_key_path, "w") as sample_key_file:
+        with open(sample_key_path, "w", encoding="utf-8") as sample_key_file:
             for sample_idx, text in enumerate(texts):
                 sample_path = voice_dir / f"sample_{sample_idx+1}.wav"
                 print(sample_path.stem, text, sep="|", file=sample_key_file)

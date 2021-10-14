@@ -8,8 +8,6 @@ from gruut_ipa import IPA
 
 import gruut
 from TTS.tts.utils.text import cleaners
-from TTS.tts.utils.text.chinese_mandarin.phonemizer import chinese_text_to_phonemes
-from TTS.tts.utils.text.japanese.phonemizer import japanese_text_to_phonemes
 from TTS.tts.utils.text.symbols import _punctuations, make_symbols, phonemes, symbols
 
 # pylint: disable=unnecessary-comprehension
@@ -45,10 +43,16 @@ def text2phone(text, language, use_espeak_phonemes=False):
 
     # TO REVIEW : How to have a good implementation for this?
     if language == "zh-CN":
+        from TTS.tts.utils.text.chinese_mandarin.phonemizer import (
+            chinese_text_to_phonemes,
+        )
+
         ph = chinese_text_to_phonemes(text)
         return ph
 
     if language == "ja-jp":
+        from TTS.tts.utils.text.japanese.phonemizer import japanese_text_to_phonemes
+
         ph = japanese_text_to_phonemes(text)
         return ph
 

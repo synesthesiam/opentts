@@ -170,6 +170,14 @@ class Synthesizer(object):
             )
             self.tts_config["audio"]["stats_path"] = stats_path
 
+        # Patch speakers file
+        speakers_file = self.tts_config["model_args"].get("speakers_file", "")
+        if speakers_file and (not os.path.isfile(speakers_file)):
+            speakers_file = os.path.join(
+                os.path.dirname(tts_checkpoint), os.path.split(speakers_file)[1]
+            )
+            self.tts_config["model_args"]["speakers_file"] = speakers_file
+
         self.use_phonemes = self.tts_config.use_phonemes
         self.ap = AudioProcessor(verbose=False, **self.tts_config.audio)
 

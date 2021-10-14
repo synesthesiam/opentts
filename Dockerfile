@@ -3,7 +3,25 @@
 # Requires Docker buildx: https://docs.docker.com/buildx/working-with-buildx/
 # -----------------------------------------------------------------------------
 
-FROM debian:bullseye as build
+FROM debian:bullseye as build-amd64
+
+FROM debian:bullseye as build-arm64
+
+FROM debian:bullseye as build-armv7
+
+# All for librosa
+RUN --mount=type=cache,id=apt-build-armv7,target=/var/cache/apt \
+    apt-get update && \
+    apt-get install --no-install-recommends --yes \
+        llvm-9-dev libopenblas-dev gfortran
+
+ENV LLVM_CONFIG=/usr/bin/llvm-config-9
+
+# -----------------------------------------------------------------------------
+
+ARG TARGETARCH
+ARG TARGETVARIANT
+FROM build-$TARGETARCH$TARGETVARIANT as build
 ARG TARGETARCH
 ARG TARGETVARIANT
 
@@ -46,7 +64,15 @@ RUN --mount=type=cache,id=pip-extras,target=/root/.cache/pip \
 
 # -----------------------------------------------------------------------------
 
-FROM debian:bullseye as run
+FROM debian:bullseye as run-amd64
+
+FROM debian:bullseye as run-arm64
+
+FROM debian:buster as run-armv7
+
+ARG TARGETARCH
+ARG TARGETVARIANT
+FROM run-$TARGETARCH$TARGETVARIANT as run
 ARG TARGETARCH
 ARG TARGETVARIANT
 

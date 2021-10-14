@@ -1,0 +1,5 @@
+sample_1|Hoe laat is het?
+sample_2|Nog een prettige dag toegewenst.
+sample_3|Kunt u wat langzamer praten, alstublieft?
+sample_4|Van Harte Gefeliciteerd met je verjaardag!
+sample_5|Moeder sneed zeven scheve sneden brood.
