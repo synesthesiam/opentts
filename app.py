@@ -802,7 +802,10 @@ async def api_voices():
 async def app_index():
     """Test page."""
     return await render_template(
-        "index.html", default_language=_DEFAULT_LANGUAGE, cache=args.cache
+        "index.html",
+        default_language=_DEFAULT_LANGUAGE,
+        cache=args.cache,
+        preferred_voices=_VOICE_ALIASES.get(_DEFAULT_LANGUAGE, []),
     )
 
 

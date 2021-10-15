@@ -16,16 +16,14 @@ RUN --mount=type=cache,id=apt-build,target=/var/cache/apt \
     mkdir -p /var/cache/apt/${TARGETARCH}${TARGETVARIANT}/archives/partial && \
     apt-get update && \
     apt-get install --yes --no-install-recommends \
-        build-essential python3 python3-venv python3-dev llvm-dev
+        build-essential python3 python3-venv python3-dev
 
-# Clean up
-RUN rm -f /etc/apt/apt.conf.d/01cache
-
-WORKDIR /app
+RUN mkdir -p /home/opentts/app
+WORKDIR /home/opentts/app
 
 # Create virtual environment
 RUN --mount=type=cache,id=pip-venv,target=/root/.cache/pip \
-    python3 -m venv --system-site-packages .venv && \
+    python3 -m venv .venv && \
     .venv/bin/pip3 install --upgrade pip && \
     .venv/bin/pip3 install --upgrade wheel setuptools
 
@@ -33,9 +31,11 @@ RUN --mount=type=cache,id=pip-venv,target=/root/.cache/pip \
 COPY download/ /download/
 
 # Install base Python requirements
-COPY requirements.txt /requirements.txt
+COPY requirements.txt requirements.txt
 RUN --mount=type=cache,id=pip-requirements,target=/root/.cache/pip \
-    .venv/bin/pip3 install -f /download -r /requirements.txt
+    .venv/bin/pip3 install -f /download -r requirements.txt
+
+# TODO: espeak voices on armv7, torch CPU only
 
 # Install extra Python packages added from ./configure
 COPY python_packages /python_packages
@@ -67,11 +67,20 @@ RUN --mount=type=cache,id=apt-run,target=/var/cache/apt \
     apt-get update && \
     cat /packages | xargs apt-get install --yes --no-install-recommends
 
+RUN --mount=type=cache,id=apt-build,target=/var/cache/apt \
+    if [ "${TARGETARCH}${TARGETVARIANT}" = 'armv7' ]; then \
+        apt-get install --yes --no-install-recommends llvm-dev libatlas3-base libgfortran5; \
+    fi
+
+# Clean up
+RUN rm -f /etc/apt/apt.conf.d/01cache
+
+# Add a user to run the application (non-root)
 RUN useradd -ms /bin/bash opentts
 
 # Copy virtual environment and files
 COPY voices/ /home/opentts/app/voices/
-COPY --from=build /app/.venv /home/opentts/app/.venv
+COPY --from=build /home/opentts/app/.venv /home/opentts/app/.venv
 COPY css/ /home/opentts/app/css/
 COPY img/ /home/opentts/app/img/
 COPY js/ /home/opentts/app/js/
@@ -94,6 +103,8 @@ RUN if [ -d '/usr/share/festival' ] && [ -d '/home/opentts/app/voices/festival/a
 
 USER opentts
 WORKDIR /home/opentts/app
+
+EXPOSE 5500
 
 ENTRYPOINT [".venv/bin/python3", "app.py"]
 

@@ -5,7 +5,7 @@
 DOCKER_PLATFORMS ?=
 
 # --push
-DOCKER_PUSH ?=
+DOCKER_PUSH ?= --output=type=docker
 
 DOCKER_TAG ?= synesthesiam/opentts
 DOCKER_BUILD ?= docker buildx build . -f Dockerfile $(DOCKER_PLATFORMS) $(DOCKER_PUSH)

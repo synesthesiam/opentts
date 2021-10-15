@@ -7,6 +7,7 @@ import logging
 import platform
 import shlex
 import shutil
+import re
 import tempfile
 import typing
 from abc import ABCMeta
@@ -1482,7 +1483,7 @@ class GlowSpeakTTS(TTSBase):
                     phoneme_map = load_phoneme_map(phoneme_map_file)
 
             # Initialize eSpeak phonemizer
-            text_language = voice.id.split("_", maxsplit=1)[0]
+            text_language = re.split(r"[-_]", voice.id, maxsplit=1)[0]
             phonemizer = Phonemizer(default_voice=text_language)
 
             tts_model = GlowSpeakTTSModel(

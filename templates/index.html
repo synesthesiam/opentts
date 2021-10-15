@@ -146,6 +146,8 @@
         <script type="text/javascript" src="js/bootstrap.min.js"></script>
 
         <script>
+          var defaultLanguage = '{{ default_language }}'
+          var preferredVoices = [ {% for v in preferred_voices: %}'{{ v|safe }}', {% endfor %} ]
           var voice_speakers = {}
 
           function q(selector) {return document.querySelector(selector)}
@@ -271,7 +273,9 @@
                       if (!res.ok) throw Error(res.statusText)
                       return res.json()
                   }).then(function(voices) {
-                      Object.entries(voices).forEach(function(id_voice) {
+                      var selectedIndex = -1
+                      
+                      Object.entries(voices).forEach(function(id_voice, currentIndex) {
                           var id = id_voice[0]
                           var voice = id_voice[1]
                           var description = voice.tts_name + ': ' + voice.name + ' [' + voice.gender + '] (' + voice.locale + ')'
@@ -285,9 +289,22 @@
                           } else {
                               voice_speakers[id] = null
                           }
+
+                          if ((selectedIndex < 0) && (language == defaultLanguage)) {
+                              for (const preferredVoice of preferredVoices) {
+                                  if (preferredVoice == id) {
+                                      selectedIndex = currentIndex
+                                      break
+                                  }
+                              }
+                          }
                       })
 
                       changeVoice()
+
+                      if (selectedIndex >= 0) {
+                          voiceList.selectedIndex = selectedIndex
+                      }
                   }).catch(function(err) {
                       q('#message').textContent = 'Error: ' + err.message
                       q('#speak-button').disabled = false
@@ -306,8 +323,6 @@
           $("#ssml").on("change", toggleSSMLSettings)
 
           window.addEventListener('load', function() {
-              var defaultLanguage = '{{ default_language }}'
-
               fetch('/api/languages')
                   .then(function(res) {
                       if (!res.ok) throw Error(res.statusText)

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+# Run opentts-server --update to update Docker image
+
+args=()
+tag='latest'
+docker='docker'
+port='5500'
+
+while [[ -n "$1" ]]; do
+    if [[ "$1" == '--update' ]]; then
+        # Update Docker image
+        update='1'
+    elif [ "$1" == '--language' ] || [ "$1" == '--lang' ] || [ "$1" == '-l'  ]; then
+        tag="$2"
+        shift 1
+    elif [[ "$1" == '--port' ]]; then
+        port="$2"
+        args+=('--port' "${port}")
+        shift 1
+    else
+        args+=("$1")
+    fi
+
+    shift 1
+done
+
+if [[ -n "${update}" ]]; then
+    docker pull "synesthesiam/opentts:${tag}"
+fi
+
+"${docker}" run \
+            -it \
+            -p "${port}:${port}" \
+            "synesthesiam/opentts:${tag}" \
+            "${args[@]}" --cache
