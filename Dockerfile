@@ -30,12 +30,22 @@ RUN --mount=type=cache,id=pip-venv,target=/root/.cache/pip \
 # Put cached Python wheels here
 COPY download/ /download/
 
-# Install base Python requirements
 COPY requirements.txt requirements.txt
-RUN --mount=type=cache,id=pip-requirements,target=/root/.cache/pip \
-    .venv/bin/pip3 install -f /download -r requirements.txt
 
-# TODO: espeak voices on armv7, torch CPU only
+# Install CPU-only PyTorch to save space
+RUN --mount=type=cache,id=pip-requirements,target=/root/.cache/pip \
+    if [ "${TARGETARCH}${TARGETVARIANT}" = 'amd64' ]; then \
+        grep '^torch' requirements.txt | \
+        sed -e 's/~=/==/' -e 's/$/+cpu/' | \
+        xargs .venv/bin/pip3 install \
+        -f download \
+        -f 'https://download.pytorch.org/whl/cpu/torch_stable.html' ; \
+    fi
+
+# Install base Python requirements
+RUN --mount=type=cache,id=pip-requirements,target=/root/.cache/pip \
+    grep -v '^torch' requirements.txt | \
+    xargs .venv/bin/pip3 install -f /download
 
 # Install extra Python packages added from ./configure
 COPY python_packages /python_packages
@@ -43,7 +53,6 @@ RUN --mount=type=cache,id=pip-extras,target=/root/.cache/pip \
     if [ -s /python_packages ]; then \
     cat /python_packages | xargs .venv/bin/pip3 install \
     -f /download \
-    -f 'https://download.pytorch.org/whl/cpu/torch_stable.html' \
     -f 'https://synesthesiam.github.io/prebuilt-apps/' ; \
     fi
 
@@ -67,7 +76,7 @@ RUN --mount=type=cache,id=apt-run,target=/var/cache/apt \
     apt-get update && \
     cat /packages | xargs apt-get install --yes --no-install-recommends
 
-RUN --mount=type=cache,id=apt-build,target=/var/cache/apt \
+RUN --mount=type=cache,id=apt-run,target=/var/cache/apt \
     if [ "${TARGETARCH}${TARGETVARIANT}" = 'armv7' ]; then \
         apt-get install --yes --no-install-recommends llvm-dev libatlas3-base libgfortran5; \
     fi

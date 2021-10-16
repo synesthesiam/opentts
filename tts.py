@@ -1459,6 +1459,10 @@ class GlowSpeakTTS(TTSBase):
         # TTS
         tts_model = self.tts_models.get(voice.id)
         if tts_model is None:
+            # Initialize eSpeak phonemizer
+            text_language = re.split(r"[-_]", voice.id, maxsplit=1)[0]
+            phonemizer = Phonemizer(default_voice=text_language)
+
             # Load TTS model
             tts_model_dir = self.models_dir / voice.id
             _LOGGER.debug("Loading glow-speak TTS model from %s", tts_model_dir)
@@ -1481,10 +1485,6 @@ class GlowSpeakTTS(TTSBase):
             if phoneme_map_path.is_file():
                 with open(phoneme_map_path, encoding="utf-8") as phoneme_map_file:
                     phoneme_map = load_phoneme_map(phoneme_map_file)
-
-            # Initialize eSpeak phonemizer
-            text_language = re.split(r"[-_]", voice.id, maxsplit=1)[0]
-            phonemizer = Phonemizer(default_voice=text_language)
 
             tts_model = GlowSpeakTTSModel(
                 onnx_model=onnxruntime.InferenceSession(
@@ -1529,7 +1529,7 @@ class GlowSpeakTTS(TTSBase):
             vocoder_model = GlowSpeakVocoderModel(
                 onnx_model=onnxruntime.InferenceSession(
                     str(vocoder_model_dir / "generator.onnx"),
-                    sess_options=tts_sess_options,
+                    sess_options=vocoder_sess_options,
                 ),
                 num_mels=num_mels,
                 sample_rate=sample_rate,

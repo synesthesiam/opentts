@@ -229,9 +229,13 @@
               loadVoices(language)
           }
 
-          function changeVoice() {
+          function changeVoice(voice) {
               var voiceList = q('#voice-list')
-              var voice = voiceList.options[voiceList.selectedIndex].value
+              
+              if (!voice) {
+                  voice = voiceList.options[voiceList.selectedIndex].value
+              }
+
               q('#voice-id').innerHTML = voice
 
               if (voice.startsWith('larynx:') || voice.startsWith('glow-speak:')) {
@@ -273,6 +277,7 @@
                       if (!res.ok) throw Error(res.statusText)
                       return res.json()
                   }).then(function(voices) {
+                      var selectedVoice = ''
                       var selectedIndex = -1
                       
                       Object.entries(voices).forEach(function(id_voice, currentIndex) {
@@ -290,9 +295,10 @@
                               voice_speakers[id] = null
                           }
 
-                          if ((selectedIndex < 0) && (language == defaultLanguage)) {
+                          if (!selectedVoice && (language == defaultLanguage)) {
                               for (const preferredVoice of preferredVoices) {
                                   if (preferredVoice == id) {
+                                      selectedVoice = id
                                       selectedIndex = currentIndex
                                       break
                                   }
@@ -300,8 +306,8 @@
                           }
                       })
 
-                      changeVoice()
 
+                      changeVoice(selectedVoice)
                       if (selectedIndex >= 0) {
                           voiceList.selectedIndex = selectedIndex
                       }
