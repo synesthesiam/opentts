@@ -12,9 +12,12 @@ DOCKER_BUILD ?= docker buildx build . -f Dockerfile $(DOCKER_PLATFORMS) $(DOCKER
 DOCKER_RUN ?= docker run -it -p 5500:5500
 RUN_ARGS ?= --debug
 
-all: en
+all:
+	./configure --language ar bn ca cs de el en es fi fr gu hi hu it ja kn ko mr nl pa  ru sv sw ta te tr zh
+	xargs < .dockerargs $(DOCKER_BUILD) --tag $(DOCKER_TAG):all
 
-run: en-run
+run:
+	$(DOCKER_RUN) $(DOCKER_TAG):all $(RUN_ARGS)
 
 # Arabic
 ar:
@@ -67,7 +70,7 @@ el-run:
 # English
 en:
 	./configure --language en
-	xargs < .dockerargs $(DOCKER_BUILD) --tag $(DOCKER_TAG):en
+	xargs < .dockerargs $(DOCKER_BUILD) --tag $(DOCKER_TAG):en --tag $(DOCKER_TAG):latest
 
 en-run:
 	$(DOCKER_RUN) $(DOCKER_TAG):en $(RUN_ARGS)

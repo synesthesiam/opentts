@@ -146,8 +146,8 @@ parser.add_argument(
 parser.add_argument(
     "--larynx-denoiser-strength",
     type=float,
-    default=0.01,
-    help="Larynx denoiser strength to use if not specified in API call (default: 0.01)",
+    default=0.005,
+    help="Larynx denoiser strength to use if not specified in API call (default: 0.005)",
 )
 parser.add_argument(
     "--larynx-noise-scale",
