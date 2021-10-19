@@ -176,7 +176,7 @@ A subset of [SSML](https://www.w3.org/TR/speech-synthesis11/) is supported:
         * Name format is `tts:voice` (e.g., "glow-speak:en-us_mary_ann") or `tts:voice#speaker_id` (e.g., "coqui-tts:en_vctk#p228")
         * If one of the supported languages, a preferred voice is used (override with `--preferred-voice <lang> <voice>`)
 * `<say-as interpret-as="">` - force interpretation of inner text
-    * `interpret-as` one of "spell-out", "date", "number", or "currency"
+    * `interpret-as` one of "spell-out", "date", "number", "time", or "currency"
     * `format` - way to format text depending on `interpret-as`
         * number - one of "cardinal", "ordinal", "digits", "year"
         * date - string with "d" (cardinal day), "o" (ordinal day), "m" (month), or "y" (year)
@@ -201,7 +201,7 @@ This is done by appending the quality level to the end of your voice:
 ```yaml
 tts:
   - platform: marytts
-    voice:larynx:harvard-glow_tts;low
+    voice:larynx:harvard;low
 ```
 
 Available quality levels are `high` (the default), `medium`, and `low`.
@@ -239,6 +239,8 @@ Default settings for [Larynx](https://github.com/rhasspy/larynx) can be provided
 ## Building From Source
 
 OpenTTS uses [Docker buildx](https://docs.docker.com/buildx/working-with-buildx/) to build multi-platform images based on [Debian bullseye](https://www.debian.org/releases/bullseye/).
+
+Before building, make sure to download the voices you want to the `voices` directory. Each TTS system that uses external voices has a sub-directory with instructions on how to download voices.
 
 If you only plan to build an image for your current platform, you should be able to run:
 
