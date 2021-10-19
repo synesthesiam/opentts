@@ -13,7 +13,7 @@ DOCKER_RUN ?= docker run -it -p 5500:5500
 RUN_ARGS ?= --debug
 
 all:
-	./configure --language ar bn ca cs de el en es fi fr gu hi hu it ja kn ko mr nl pa  ru sv sw ta te tr zh
+	./configure --language ar,bn,ca,cs,de,el,en,es,fi,fr,gu,hi,hu,it,ja,kn,ko,mr,nl,pa,ru,sv,sw,ta,te,tr,zh
 	xargs < .dockerargs $(DOCKER_BUILD) --tag $(DOCKER_TAG):all
 
 run:
