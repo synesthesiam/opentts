@@ -1,11 +1,12 @@
-## [2.1] - 2021 Oct 15
+## [2.1] - 2021 Oct 19
 
 ### Added
 
 - SSML support using gruut 2.0
   - <speak>, <voice name="">, <s lang="">, <w lang="" role="">, <break time="">, <say-as interpret-as="" format="">, <sub alias="">
-  - voice name is <tts>:<voice>, so different TTS system can be mixed
+  - voice name is <tts>:<voice>, so different TTS systems can be mixed
 - Swahili, Finnish, Hungarian, Greek, and Korean voices with Glow-Speak
+- Japanese, Chinese voices with Coqui-TTS
 - Additional Larynx voices
 
 ### Fixed
