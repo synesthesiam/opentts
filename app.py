@@ -541,8 +541,13 @@ async def ssml_to_wavs(
                 n_channels = sent_wav_file.getnchannels()
 
                 # Add pauses from SSML <break> tags
-                if sentence.pause_before_ms > 0:
-                    pause_before_sec = sentence.pause_before_ms / 1000
+                pause_before_ms = sentence.pause_before_ms
+                if sentence.words:
+                    # Add pause from first word
+                    pause_before_ms += sentence.words[0].pause_before_ms
+
+                if pause_before_ms > 0:
+                    pause_before_sec = pause_before_ms / 1000
                     yield (
                         make_silence_wav(
                             pause_before_sec, sample_rate, sample_width, n_channels,
@@ -552,8 +557,13 @@ async def ssml_to_wavs(
 
                 yield (sent_wav_bytes, sample_rate)
 
-                if sentence.pause_after_ms > 0:
-                    pause_after_sec = sentence.pause_after_ms / 1000
+                pause_after_ms = sentence.pause_after_ms
+                if sentence.words:
+                    # Add pause from last word
+                    pause_after_ms += sentence.words[-1].pause_after_ms
+
+                if pause_after_ms > 0:
+                    pause_after_sec = pause_after_ms / 1000
                     yield (
                         make_silence_wav(
                             pause_after_sec, sample_rate, sample_width, n_channels,
