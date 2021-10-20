@@ -268,7 +268,8 @@ Under the hood, this does two things:
 
 You can manually run the `configure` script -- see `./configure --help` for more options. This script generates the following files (used by the build process):
 
-* packages - Debian packages installed with `apt-get`
+* build_packages - Debian packages installed with `apt-get` during the build only
+* packages - Debian packages installed with `apt-get` for runtime
 * python_packages - Python packages installed with `pip`
 * .dockerignore - Files that docker will ignore during building ("!" inverts)
 * .dockerargs - Command-line arguments passed to `docker buildx build`

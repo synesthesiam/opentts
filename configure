@@ -80,7 +80,10 @@ GLOW_SPEAK_PYTHON=('espeak-phonemizer~=1.0.0' 'onnxruntime>=1.6.0,<2.0' 'phoneme
 GLOW_SPEAK_VOCODERS=('voices/glow-speak/hifi-gan_*')
 COQUI_TTS_PYTHON=('anyascii' 'coqpit' 'fsspec>=2021.04.0' 'librosa==0.8.0' 'numpy>=1.19.5' 'pysbd' 'scipy>=0.19.0' 'torch>=1.7,<1.9')
 
-# Extgra Debian packages installed with apt-get into the Docker image.
+# Extra Debian packages installed with apt-get before building Python virtual environment.
+build_packages=()
+
+# Extra Debian packages installed with apt-get into the Docker image.
 packages=()
 if [[ -z "${no_espeak}" ]]; then
     packages+=('espeak-ng' 'espeak-ng-data')
@@ -312,7 +315,8 @@ for language in "${languages[@]}"; do
     elif [[ "${language}" == 'ja' ]]; then
         # Japanese
         if [[ -z "${no_coqui}" ]]; then
-            packages+=('libmecab-dev')
+            build_packages+=('libmecab-dev')
+            packages+=('libmecab2')
             keep_paths+=('voices/coqui-tts/ja_*')
             python_packages+=(${COQUI_TTS_PYTHON[@]} 'mecab-python3==1.0.3' 'unidic-lite==1.0.8')
         fi
@@ -469,10 +473,16 @@ trap cleanup EXIT;
 
 # Generate files
 touch \
+    "${temp_dir}/build_packages" \
     "${temp_dir}/packages" \
     "${temp_dir}/python_packages" \
     "${temp_dir}/.dockerignore" \
     "${temp_dir}/.dockerargs"
+
+for build_package in "${build_packages[@]}"; do
+    echo "${build_package}" >> "${temp_dir}/build_packages"
+done
+cat "${temp_dir}/build_packages" | sort | uniq > "${this_dir}/build_packages"
 
 for package in "${packages[@]}"; do
     echo "${package}" >> "${temp_dir}/packages"

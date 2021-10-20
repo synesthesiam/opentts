@@ -18,6 +18,13 @@ RUN --mount=type=cache,id=apt-build,target=/var/cache/apt \
     apt-get install --yes --no-install-recommends \
         build-essential python3 python3-venv python3-dev
 
+# Install extra Debian build packages added from ./configure
+COPY build_packages /build_packages
+RUN --mount=type=cache,id=apt-build,target=/var/cache/apt \
+    if [ -s /build_packages ]; then \
+        cat /build_packages | xargs apt-get install --yes --no-install-recommends; \
+    fi
+
 RUN mkdir -p /home/opentts/app
 WORKDIR /home/opentts/app
 
