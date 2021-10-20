@@ -1,0 +1,12 @@
+Glow-Speak voices and vocoders go here (https://github.com/rhasspy/glow-speak).
+
+Each voice/vocoder in a separate directory. For example:
+
+de_thorsten/
+  config.json
+  generator.onnx
+  phoneme_map.txt
+  phonemes.txt
+hifi_gan_high/
+  config.json
+  generator.onnx

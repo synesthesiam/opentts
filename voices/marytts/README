@@ -1,5 +1,7 @@
 Voices for MaryTTS (http://mary.dfki.de/).
 
+See https://github.com/synesthesiam/opentts/releases/latest
+
 Each language is in a separate directory. For example:
 
 en-US/

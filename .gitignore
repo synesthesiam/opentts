@@ -5,6 +5,9 @@ __pycache__/
 /download/
 /log/
 
+/voices/*/
+/voices/*.tar.gz
+
 .dockerignore
 .dockerargs
 python_packages
