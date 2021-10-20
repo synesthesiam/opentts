@@ -3,9 +3,6 @@ __pycache__/
 .mypy_cache/
 
 /download/
-/voices/larynx/
-/voices/glow-speak/
-/voices/coqui-tts/
 /log/
 
 .dockerignore
@@ -13,3 +10,7 @@ __pycache__/
 python_packages
 packages
 build_packages
+
+*.onnx
+*.flitevox
+*.jar
