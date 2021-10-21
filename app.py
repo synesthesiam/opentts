@@ -47,6 +47,7 @@ from tts import (
 
 _DIR = Path(__file__).parent
 _VOICES_DIR = _DIR / "voices"
+_VERSION = (_DIR / "VERSION").read_text().strip()
 
 _LOGGER = logging.getLogger("opentts")
 _LOOP = asyncio.get_event_loop()
@@ -803,6 +804,12 @@ async def api_voices():
             voices.append(full_id)
 
     return "\n".join(voices)
+
+
+@app.route("/version", methods=["GET"])
+async def api_version():
+    """MaryTTS-compatible /version endpoint"""
+    return _VERSION
 
 
 # -----------------------------------------------------------------------------

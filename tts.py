@@ -5,9 +5,9 @@ import io
 import json
 import logging
 import platform
+import re
 import shlex
 import shutil
-import re
 import tempfile
 import typing
 from abc import ABCMeta
