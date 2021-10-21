@@ -26,7 +26,7 @@ class GlowTextToSpeech(TextToSpeechModel):
             str(generator_path), sess_options=config.session_options
         )
 
-        self.noise_scale = 0.333
+        self.noise_scale = 0.667
         self.length_scale = 1.0
 
     # -------------------------------------------------------------------------

@@ -153,8 +153,8 @@ parser.add_argument(
 parser.add_argument(
     "--larynx-noise-scale",
     type=float,
-    default=0.333,
-    help="Larynx noise scale (voice volatility) to use if not specified in API call (default: 0.333)",
+    default=0.667,
+    help="Larynx noise scale (voice volatility) to use if not specified in API call (default: 0.667)",
 )
 parser.add_argument(
     "--larynx-length-scale",

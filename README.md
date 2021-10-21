@@ -232,7 +232,7 @@ tts:
 Default settings for [Larynx](https://github.com/rhasspy/larynx) can be provided on the command-line:
 
 * `--larynx-quality` - vocoder quality ("high", "medium", or "low", default: "high")
-* `--larynx-noise-scale` - voice volatility (0-1, default: 0.333)
+* `--larynx-noise-scale` - voice volatility (0-1, default: 0.667)
 * `--larynx-length-scale` - voice speed (< 1 is faster, default: 1.0)
 
 ---
