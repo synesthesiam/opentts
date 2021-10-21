@@ -35,7 +35,7 @@ Supports a [subset of SSML](#ssml) that can use multiple voices, text to speech 
 </speak>
 ```
 
-See the [full SSML example](https://github.com/synesthesiam/opentts/blob/master/etc/ssml_example.xml)
+See the [full SSML example](https://github.com/synesthesiam/opentts/blob/master/etc/ssml_example.xml) (use `synesthesiam/opentts:all` Docker image with all voices included)
 
 [Listen to voice samples](https://synesthesiam.github.io/opentts/)
 
@@ -81,6 +81,7 @@ $ docker run -it -p 5500:5500 synesthesiam/opentts:<LANGUAGE>
 
 where `<LANGUAGE>` is one of:
 
+* all (All languages)
 * ar (Arabic)
 * bn (Bengali)
 * ca (Catalan)
