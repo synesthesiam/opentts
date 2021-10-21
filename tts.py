@@ -1088,6 +1088,13 @@ class LarynxTTS(TTSBase):
                 language="en",
                 gender="M",
             ),
+            "glados-glow_tts": Voice(
+                id="glados-glow_tts",
+                name="glados-glow_tts",
+                locale="en-us",
+                language="en",
+                gender="F",
+            ),
             # es-es
             "carlfm-glow_tts": Voice(
                 id="carlfm-glow_tts",
