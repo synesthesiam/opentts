@@ -106,7 +106,7 @@ COPY templates/ /home/opentts/app/templates/
 COPY glow_speak/ /home/opentts/app/glow_speak/
 COPY larynx/ /home/opentts/app/larynx/
 COPY TTS/ /home/opentts/app/TTS/
-COPY app.py tts.py /home/opentts/app/
+COPY app.py tts.py VERSION swagger.yaml /home/opentts/app/
 
 ARG DEFAULT_LANGUAGE='en'
 RUN echo "${DEFAULT_LANGUAGE}" > /home/opentts/app/LANGUAGE
@@ -121,6 +121,9 @@ RUN if [ -d '/usr/share/festival' ] && [ -d '/home/opentts/app/voices/festival/a
 
 USER opentts
 WORKDIR /home/opentts/app
+
+# Sanity check
+RUN .venv/bin/python3 app.py --version
 
 EXPOSE 5500
 

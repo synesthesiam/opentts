@@ -11,6 +11,7 @@ import math
 import re
 import shutil
 import signal
+import sys
 import tempfile
 import time
 import typing
@@ -136,6 +137,7 @@ parser.add_argument(
 parser.add_argument(
     "--debug", action="store_true", help="Print DEBUG messages to console"
 )
+parser.add_argument("--version", action="store_true", help="Print version and exit")
 
 # Larynx-specific settings
 parser.add_argument(
@@ -171,6 +173,10 @@ else:
     logging.basicConfig(level=logging.INFO)
 
 _LOGGER.debug(args)
+
+if args.version:
+    print(_VERSION)
+    sys.exit(0)
 
 if args.language:
     _DEFAULT_LANGUAGE = args.language
