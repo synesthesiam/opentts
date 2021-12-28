@@ -16,7 +16,7 @@ RUN --mount=type=cache,id=apt-build,target=/var/cache/apt \
     mkdir -p /var/cache/apt/${TARGETARCH}${TARGETVARIANT}/archives/partial && \
     apt-get update && \
     apt-get install --yes --no-install-recommends \
-        build-essential python3 python3-venv python3-dev
+        build-essential python3 python3-venv python3-dev wget
 
 # Install extra Debian build packages added from ./configure
 COPY build_packages /build_packages
@@ -65,6 +65,12 @@ RUN --mount=type=cache,id=pip-extras,target=/root/.cache/pip \
         -f 'https://download.pytorch.org/whl/cpu/torch_stable.html' ; \
     fi
 
+# Install prebuilt nanoTTS
+RUN mkdir -p /nanotts && \
+    wget -O - --no-check-certificate \
+        "https://github.com/synesthesiam/prebuilt-apps/releases/download/v1.0/nanotts-20200520_${TARGETARCH}${TARGETVARIANT}.tar.gz" | \
+        tar -C /nanotts -xzf -
+
 # -----------------------------------------------------------------------------
 
 FROM debian:bullseye as run
@@ -85,10 +91,8 @@ RUN --mount=type=cache,id=apt-run,target=/var/cache/apt \
     apt-get update && \
     cat /packages | xargs apt-get install --yes --no-install-recommends
 
-RUN --mount=type=cache,id=apt-run,target=/var/cache/apt \
-    if [ "${TARGETARCH}${TARGETVARIANT}" = 'armv7' ]; then \
-        apt-get install --yes --no-install-recommends llvm libatlas3-base libgfortran5; \
-    fi
+# Copy nanotts
+COPY --from=build /nanotts/ /usr/
 
 # Clean up
 RUN rm -f /etc/apt/apt.conf.d/01cache

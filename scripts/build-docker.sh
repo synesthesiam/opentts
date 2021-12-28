@@ -16,7 +16,8 @@ if [[ -n "$1" ]]; then
     done
 else
     # All languages
-    languages+=('ar' 'bn' 'ca' 'cs' 'de' 'el' 'en' 'es' 'fi' 'fr' 'gu' 'hi' 'hu' 'it' 'ja' 'kn' 'ko' 'mr' 'nl' 'pa' 'ru' 'sv' 'sw' 'ta' 'te' 'tr' 'zh')
+    # languages+=('ar' 'bn' 'ca' 'cs' 'de' 'el' 'en' 'es' 'fi' 'fr' 'gu' 'hi' 'hu' 'it' 'ja' 'kn' 'ko' 'mr' 'nl' 'pa' 'ru' 'sv' 'sw' 'ta' 'te' 'tr' 'zh')
+    languages+=('ar' 'bn' 'ca' 'cs' 'de' 'el' 'en' 'es' 'fi' 'fr' 'gu' 'hi' 'hu' 'it' 'kn' 'ko' 'mr' 'nl' 'pa' 'ru' 'sv' 'sw' 'ta' 'te' 'tr' 'zh')
 fi
 
 
