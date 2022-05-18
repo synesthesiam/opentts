@@ -1435,6 +1435,14 @@ class GlowSpeakTTS(TTSBase):
                 language="sw",
                 gender="M",
             ),
+            # zh
+            "zh_cmn_jing_li": Voice(
+                id="cmn_jing_li",
+                name="cmn_jing_li",
+                locale="zh-cmn",
+                language="zh",
+                gender="M",
+            ),
         }
 
     async def voices(self) -> VoicesIterable:
