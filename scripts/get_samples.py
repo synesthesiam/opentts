@@ -92,11 +92,11 @@ _TEST_SENTENCES = {
         "एक भाषा कभी भी काफ़ी नहीं होती",
     ],
     "hu": [
-        "Hyvää kiitos, entä sinulle?",
-        "Puhutteko suomen lisäksi jotain muuta kieltä?",
-        "Haluaisitko tanssia kanssani?",
-        "Yksi kieli ei koskaan riitä.",
-        "Ilmatyynyalukseni on täynnä ankeriaita.",
+        "Jó napot kívánok, a beszélőgép vagyok.",
+        "Olyat mondok, hogy magam is megbánom.",
+        "Bagoly mondja verébnek, hogy nagyfejű.",
+        "A semminél a kevés is többet ér.",
+        "Úgy él, mint Marci Hevesen.",
     ],
     "it": [
         "Da dove vieni?",
