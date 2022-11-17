@@ -1,0 +1,13 @@
+version: '3.3'
+
+services:
+  opentts:
+    image: 'synesthesiam/opentts:en'
+    container_name: opentts
+    ports:
+        - '5500:5500'
+    command: '--no-espeak'
+    restart: unless-stopped
+    logging:
+      options:
+        max-size: 10m
