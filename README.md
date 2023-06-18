@@ -43,7 +43,7 @@ See the [full SSML example](https://github.com/synesthesiam/opentts/blob/master/
 
 ## Voices
 
-* [Larynx](https://github.com/rhasspy/larynx-runtime)
+* [Larynx](https://github.com/rhasspy/larynx)
     * English (27), German (7), French (3), Spanish (2), Dutch (4), Russian (3), Swedish (1), Italian (2), Swahili (1)
     * Model types available: [GlowTTS](https://github.com/rhasspy/glow-tts-train)
     * Vocoders available: [HiFi-Gan](https://github.com/rhasspy/hifi-gan-train) (3 levels of quality)
