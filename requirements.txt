@@ -3,3 +3,4 @@ hypercorn~=0.11.0
 quart~=0.15.0
 quart-cors~=0.5.0
 swagger-ui-py~=21.9.28
+jinja2<3.1.0
