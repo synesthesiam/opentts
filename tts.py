@@ -80,6 +80,12 @@ class EspeakTTS(TTSBase):
             parts = line.split()
             locale = parts[1]
             language = locale.split("-", maxsplit=1)[0]
+            if locale == "cmn":
+                locale = "zh-cmn"
+                language = "zh"
+            if locale == "yue":
+                locale = "zh-yue"
+                language = "zh"
 
             yield Voice(
                 id=parts[1],
@@ -1434,6 +1440,14 @@ class GlowSpeakTTS(TTSBase):
                 locale="sw",
                 language="sw",
                 gender="M",
+            ),
+            # zh
+            "cmn_jing_li": Voice(
+                id="cmn_jing_li",
+                name="cmn_jing_li",
+                locale="zh-cmn",
+                language="zh",
+                gender="F",
             ),
         }
 

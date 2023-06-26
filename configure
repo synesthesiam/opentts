@@ -455,6 +455,12 @@ for language in "${languages[@]}"; do
             keep_paths+=('voices/coqui-tts/zh_*')
             python_packages+=(${COQUI_TTS_PYTHON[@]}  'jieba' 'pypinyin')
         fi
+
+        if [[ -z "${no_glow_speak}" ]]; then
+            packages+=(${GLOW_SPEAK_PACKAGES[@]})
+            keep_paths+=('voices/glow-speak/cmn_*' ${GLOW_SPEAK_VOCODERS[@]})
+            python_packages+=(${GLOW_SPEAK_PYTHON[@]})
+        fi
     fi
 
     echo "${language}"
