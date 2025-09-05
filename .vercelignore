@@ -1,0 +1,14 @@
+# Exclude large directories from Vercel deployment
+voices/
+samples/
+# Exclude docker-related files
+Dockerfile
+.dockerignore.in
+# Exclude git files
+.gitignore
+# Exclude development files
+requirements_dev.txt
+# Exclude other large directories that are not needed
+gruut/
+larynx/
+TTS/
