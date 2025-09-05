@@ -214,12 +214,19 @@ def get_cache_key(text: str, voice: str, settings: str = "") -> str:
 
 # -----------------------------------------------------------------------------
 
-# Load text to speech systems
-_TTS: typing.Dict[str, TTSBase] = {}
+# Available text to speech systems
+# Class and constructor arguments
+_TTS_INFO: typing.Dict[
+    str, typing.Tuple[typing.Type[TTSBase], typing.Dict[str, typing.Any]]
+] = {}
+
+# Instantiated text to speech systems
+_TTS_INSTANCES: typing.Dict[str, TTSBase] = {}
+
 
 # espeak
 if (not args.no_espeak) and shutil.which("espeak-ng"):
-    _TTS["espeak"] = EspeakTTS()
+    _TTS_INFO["espeak"] = (EspeakTTS, {})
 
 # flite
 if (not args.no_flite) and shutil.which("flite"):
@@ -227,19 +234,19 @@ if (not args.no_flite) and shutil.which("flite"):
     if args.flite_voices_dir:
         flite_voices_dir = Path(args.flite_voices_dir)
 
-    _TTS["flite"] = FliteTTS(voice_dir=flite_voices_dir)
+    _TTS_INFO["flite"] = (FliteTTS, {"voice_dir": flite_voices_dir})
 
 # festival
 if (not args.no_festival) and shutil.which("festival"):
-    _TTS["festival"] = FestivalTTS()
+    _TTS_INFO["festival"] = (FestivalTTS, {})
 
 # nanotts
 if (not args.no_nanotts) and shutil.which("nanotts"):
-    _TTS["nanotts"] = NanoTTS()
+    _TTS_INFO["nanotts"] = (NanoTTS, {})
 
 # MaryTTS
 if (not args.no_marytts) and shutil.which("java"):
-    _TTS["marytts"] = MaryTTS(base_dir=(_VOICES_DIR / "marytts"))
+    _TTS_INFO["marytts"] = (MaryTTS, {"base_dir": (_VOICES_DIR / "marytts")})
 
 # Larynx
 if not args.no_larynx:
@@ -254,7 +261,7 @@ if not args.no_larynx:
             _LOGGER.exception("larynx")
 
     if larynx_available:
-        _TTS["larynx"] = LarynxTTS(models_dir=(_VOICES_DIR / "larynx"))
+        _TTS_INFO["larynx"] = (LarynxTTS, {"models_dir": (_VOICES_DIR / "larynx")})
 
 # Glow-Speak
 if not args.no_glow_speak:
@@ -269,7 +276,10 @@ if not args.no_glow_speak:
             _LOGGER.exception("glow-speak")
 
     if glow_speak_available:
-        _TTS["glow-speak"] = GlowSpeakTTS(models_dir=(_VOICES_DIR / "glow-speak"))
+        _TTS_INFO["glow-speak"] = (
+            GlowSpeakTTS,
+            {"models_dir": (_VOICES_DIR / "glow-speak")},
+        )
 
 # Coqui-TTS
 if not args.no_coqui:
@@ -284,11 +294,25 @@ if not args.no_coqui:
             _LOGGER.exception("coqui-tts")
 
     if coqui_available:
-        _TTS["coqui-tts"] = CoquiTTS(models_dir=(_VOICES_DIR / "coqui-tts"))
+        _TTS_INFO["coqui-tts"] = (CoquiTTS, {"models_dir": (_VOICES_DIR / "coqui-tts")})
 
-_LOGGER.debug("Loaded TTS systems: %s", ", ".join(_TTS.keys()))
+_LOGGER.debug("Available TTS systems: %s", ", ".join(_TTS_INFO.keys()))
 
 # -----------------------------------------------------------------------------
+
+def get_tts(tts_name: str) -> TTSBase:
+    """Get or create a TTS system"""
+    tts_instance = _TTS_INSTANCES.get(tts_name)
+    if tts_instance is None:
+        tts_info = _TTS_INFO.get(tts_name)
+        if tts_info is None:
+            raise ValueError(f"No TTS named {tts_name}")
+        tts_class, tts_args = tts_info
+        _LOGGER.debug("Loading TTS system: %s", tts_name)
+        tts_instance = tts_class(**tts_args)
+        _TTS_INSTANCES[tts_name] = tts_instance
+    return tts_instance
+
 
 app = Quart("opentts")
 app.secret_key = str(uuid4())
@@ -452,8 +476,7 @@ async def text_to_wavs(
 
     assert ":" in voice, f"Invalid voice: {voice}"
     tts_name, voice_id = voice.split(":", maxsplit=1)
-    tts = _TTS.get(tts_name.lower())
-    assert tts, f"No TTS named {tts_name}"
+    tts = get_tts(tts_name.lower())
 
     if "#" in voice_id:
         voice_id, speaker_id = voice_id.split("#", maxsplit=1)
@@ -515,8 +538,7 @@ async def ssml_to_wavs(
 
         assert ":" in sent_voice, f"Invalid voice format: {sent_voice}"
         tts_name, voice_id = sent_voice.split(":")
-        tts = _TTS.get(tts_name.lower())
-        assert tts, f"No TTS named {tts_name}"
+        tts = get_tts(tts_name.lower())
 
         if "#" in voice_id:
             voice_id, speaker_id = voice_id.split("#", maxsplit=1)
@@ -612,11 +634,12 @@ async def app_voices() -> Response:
     tts_names = set(request.args.getlist("tts_name"))
 
     voices: typing.Dict[str, typing.Any] = {}
-    for tts_name, tts in _TTS.items():
+    for tts_name in _TTS_INFO:
         if tts_names and (tts_name not in tts_names):
             # Skip TTS
             continue
 
+        tts = get_tts(tts_name)
         async for voice in tts.voices():
             if languages and (voice.language not in languages):
                 # Skip language
@@ -646,11 +669,12 @@ async def app_languages() -> Response:
     tts_names = set(request.args.getlist("tts_name"))
     languages: typing.Set[str] = set()
 
-    for tts_name, tts in _TTS.items():
+    for tts_name in _TTS_INFO:
         if tts_names and (tts_name not in tts_names):
             # Skip TTS
             continue
 
+        tts = get_tts(tts_name)
         async for voice in tts.voices():
             languages.add(voice.language)
 
@@ -761,8 +785,8 @@ def resolve_voice(voice: str, fallback_voice: typing.Optional[str] = None) -> st
 
     for preferred_voice in itertools.chain(_VOICE_ALIASES[alias_key], fallback_voices):
         tts, _voice_id = preferred_voice.split(":", maxsplit=1)
-        if tts in _TTS:
-            # If TTS system is loaded, assume voice will be present
+        if tts in _TTS_INFO:
+            # If TTS system is available, assume voice will be present
             return preferred_voice
 
     raise ValueError(f"Cannot resolve voice: {voice}")
@@ -803,7 +827,8 @@ async def api_process():
 async def api_voices():
     """MaryTTS-compatible /voices endpoint"""
     voices = []
-    for tts_name, tts in _TTS.items():
+    for tts_name in _TTS_INFO:
+        tts = get_tts(tts_name)
         async for voice in tts.voices():
             # Prepend TTS system name to voice ID
             full_id = f"{tts_name}:{voice.id}"
