@@ -824,30 +824,10 @@ async def api_version():
 @app.route("/")
 async def app_index():
     """Test page."""
-    return await render_template(
-        "index.html",
-        default_language=_DEFAULT_LANGUAGE,
-        cache=args.cache,
-        preferred_voices=_VOICE_ALIASES.get(_DEFAULT_LANGUAGE, []),
-    )
+    # Serve the static index.html from the root directory
+    return await send_from_directory(str(_DIR), "index.html")
 
 
-@app.route("/css/<path:filename>", methods=["GET"])
-async def css(filename) -> Response:
-    """CSS static endpoint."""
-    return await send_from_directory("css", filename)
-
-
-@app.route("/js/<path:filename>", methods=["GET"])
-async def js(filename) -> Response:
-    """Javascript static endpoint."""
-    return await send_from_directory("js", filename)
-
-
-@app.route("/img/<path:filename>", methods=["GET"])
-async def img(filename) -> Response:
-    """Image static endpoint."""
-    return await send_from_directory("img", filename)
 
 
 # Swagger UI

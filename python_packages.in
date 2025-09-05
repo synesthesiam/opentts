@@ -1,0 +1,13 @@
+# For larynx
+# See https://github.com/rhasspy/larynx/
+# For glow-speak
+# See https://github.com/rhasspy/glow-speak
+# For Coqui-TTS
+# See https://github.com/coqui-ai/TTS
+gruut==2.2.2
+gruut-lang-en==2.0.1
+gruut-lang-es==2.0.0
+quart
+quart-cors
+hypercorn
+swagger-ui-py
